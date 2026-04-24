@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FraudCopilotCaseFile",
+  "type": "object",
+  "required": [
+    "case",
+    "documents",
+    "external_matches",
+    "risk_flags",
+    "timeline",
+    "memo"
+  ],
+  "properties": {
+    "case": {
+      "type": "object",
+      "required": ["id", "title", "status", "overall_risk_score", "created_at"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" },
+        "overall_risk_score": { "type": "integer" },
+        "created_at": { "type": "string" }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "filename", "doc_type", "preview"],
+        "properties": {
+          "id": { "type": "string" },
+          "filename": { "type": "string" },
+          "doc_type": { "type": "string" },
+          "preview": { "type": "string" }
+        }
+      }
+    },
+    "external_matches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "source_name", "match_key", "match_status", "summary"],
+        "properties": {
+          "id": { "type": "string" },
+          "source_name": { "type": "string" },
+          "match_key": { "type": "string" },
+          "match_status": { "type": "string" },
+          "summary": { "type": "string" }
+        }
+      }
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "reason_code", "score_delta", "summary", "why_flagged", "external_validation", "evidence_quotes"],
+        "properties": {
+          "id": { "type": "string" },
+          "severity": { "type": "string" },
+          "reason_code": { "type": "string" },
+          "score_delta": { "type": "integer" },
+          "summary": { "type": "string" },
+          "why_flagged": { "type": "string" },
+          "external_validation": { "type": "string" },
+          "evidence_quotes": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "source"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "date": { "type": ["string", "null"] },
+          "source": { "type": "string" }
+        }
+      }
+    },
+    "memo": {
+      "type": "object",
+      "required": ["title", "body"],
+      "properties": {
+        "title": { "type": "string" },
+        "body": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Build and coverage output
+dist/
+build/
+coverage/
+
+# Logs and local environment
+*.log
+.env
+.env.*
+
+# OS files
+.DS_Store

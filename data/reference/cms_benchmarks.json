@@ -1,0 +1,20 @@
+[
+  {
+    "procedure_code": "99214",
+    "description": "Established patient office visit",
+    "allowed_taxonomies": [
+      "207Q00000X"
+    ],
+    "p90_amount": 450,
+    "p90_patient_count": 25
+  },
+  {
+    "procedure_code": "93000",
+    "description": "Electrocardiogram",
+    "allowed_taxonomies": [
+      "207Q00000X"
+    ],
+    "p90_amount": 250,
+    "p90_patient_count": 20
+  }
+]

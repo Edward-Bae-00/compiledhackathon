@@ -1,0 +1,14 @@
+{
+  "1234567890": {
+    "name": "Dr. Excluded Provider",
+    "taxonomy_code": "207Q00000X",
+    "taxonomy_display": "Family Medicine",
+    "address": "101 Audit Trail Ave, Baltimore, MD"
+  },
+  "1111222233": {
+    "name": "Dr. Clean Provider",
+    "taxonomy_code": "207Q00000X",
+    "taxonomy_display": "Family Medicine",
+    "address": "88 Clinic Square, Richmond, VA"
+  }
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Dr. Excluded Provider",
+    "match_key": "dr. excluded provider",
+    "entity_type": "individual",
+    "reason": "OIG exclusion in effect"
+  },
+  {
+    "name": "Apex Review Group",
+    "match_key": "apex review group",
+    "entity_type": "entity",
+    "reason": "Excluded billing contractor"
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "title": "Suspicious Provider Billing",
+  "tip_text": "Whistleblower reports unusually high billing volumes for Dr. Excluded Provider.",
+  "documents": [
+    {
+      "filename": "claims.csv",
+      "doc_type": "claim_summary",
+      "content": "npi,procedure_code,service_date,amount,patient_count,provider_name\n1234567890,99214,2025-01-01,5000,75,Dr. Excluded Provider\n"
+    },
+    {
+      "filename": "internal-note.txt",
+      "doc_type": "memo",
+      "content": "Dr. Excluded Provider coordinated billing through Apex Review Group."
+    }
+  ]
+}
