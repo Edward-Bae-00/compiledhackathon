@@ -10,6 +10,28 @@ Local-first healthcare fraud triage demo with a Next.js workspace, FastAPI backe
 - Entity relationship graph connecting providers, procedures, documents, reference matches, and billing entities.
 - A memo panel with local or AIP provenance plus Palantir diagnostics for configured stages.
 
+## Next Requirement: Complaint-Ready Case Packages
+
+The next product requirement is a complaint-ready package builder for False Claims Act and qui tam case development. This is planned work, not part of the current runtime demo.
+
+The package builder should turn an analyzed case file into a structured packet a whistleblower law firm, state attorney general, or inspector general team can review quickly:
+
+- **FCA theory of liability:** classify the likely theory, such as excluded-provider billing, upcoding, medically unnecessary billing, kickbacks, false certification, or billing-company control.
+- **Evidence-to-allegation map:** connect each proposed allegation to source documents, quote text, source location, confidence, and review status.
+- **Exhibit index:** group documents, claims, graph relationships, public-data matches, and supporting quotes into complaint-ready exhibits.
+- **Damages and exposure estimate:** summarize suspicious billing volume, rough lookback period, affected programs, claim amount, and recovery/penalty assumptions.
+- **Draft export packet:** generate a package containing the investigator memo, chronology, entity graph, exhibit index, open questions, and recommended follow-up records requests.
+
+Success criteria: after reviewing the package, a fraud investigator or FCA lawyer can see what is alleged, which evidence supports it, which elements are still weak, and what records should be requested next.
+
+## Additional Future Requirements
+
+- **Citation-grade evidence model:** store document IDs, page/line/span locations, extracted quote text, confidence, and human review status for every finding.
+- **Corporate structure and control tracing:** expand the graph to include owners, billing companies, management services organizations, shared addresses, officers, and control relationships.
+- **Messy PDF/OCR intake:** accept multi-document PDF bundles, OCR text, and extracted tables instead of relying only on pasted text or CSV content.
+- **Legal elements checklist:** score readiness against FCA elements such as false claim, knowledge, materiality, government payment, damages, and source credibility.
+- **Records request and subpoena drafting:** generate next-step requests for claims data, ownership records, billing-company communications, and preservation letters.
+
 ## Run the Local Demo
 
 Prerequisites:
