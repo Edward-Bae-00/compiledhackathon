@@ -8,6 +8,8 @@
 - Use a monorepo with a Next.js frontend and FastAPI backend.
 - Support upload/paste intake, evidence extraction, LEIE/NPPES/CMS enrichment, deterministic risk scoring, and memo generation.
 - Use local-first storage with seeded public data and one synthetic demo case.
+- Next product requirement: add a complaint-ready FCA/qui tam case package builder that turns analyzed evidence into theory of liability, allegation-evidence map, exhibit index, damages estimate, export packet, and open follow-up questions.
+- Live-demo UI polish requirement: make the existing frontend look clean, modern, and judge-ready without changing API behavior or adding new backend features.
 - Implement in the current working directory rather than a git worktree.
 
 ## Research Findings
@@ -25,6 +27,8 @@
 | Use one seeded suspicious demo packet and one lighter clean control packet | Supports both the demo and risk-ranking verification. |
 | Keep backend persistence to a single SQLite connection per app instance | Simplifies local development and allows in-memory storage during pytest runs. |
 | Model the frontend around a single `WorkspaceCaseData` object | Keeps the 4-panel UI simple and matches the backend analyze payload closely. |
+| Keep the Phase 10 UI polish dependency-free | Avoids adding package/install risk for a live demo and keeps the frontend reliable offline. |
+| Use CSS-only responsive layout and system fonts for the polish pass | Improves perceived quality without introducing remote font or asset loading failures. |
 
 ## 2026-04-24 Product Improvement Findings
 - The highest-impact product gap is intake: the web `Analyze Case` button prefers the backend but still sends a hard-coded seeded packet rather than user-entered or uploaded evidence.
@@ -63,6 +67,18 @@
 - The frontend now renders entity graph nodes/edges, `[AIP]` versus local badges, memo source, Palantir diagnostics, raw response details, and a local-only toggle.
 - Seeded LEIE, NPI, and CMS benchmark reference files now include broader rows for billing companies, DME, lab testing, and additional procedures.
 
+## 2026-04-24 YC RFS Fit Findings
+- The current product already supports triage, staged AIP extraction/risk/memo generation, and relationship graphing, but the YC prompt is more explicitly about turning tips into complaint-ready case files.
+- The highest-leverage next requirement is a complaint-ready case package builder for FCA/qui tam teams, because it connects the product to law-firm, state AG, and inspector-general workflows.
+- Citation-grade evidence links should be implemented before package export, because every allegation needs source document, quote, location, confidence, and review status.
+- Corporate structure/control tracing, messy PDF/OCR intake, legal-elements scoring, and records-request drafting are strong follow-on requirements after the package builder path is clear.
+
+## 2026-04-24 Live Demo UI/UX Findings
+- `ui-ux-pro-max` recommended a healthcare SaaS direction with a calm cyan/teal and health-green palette, clean hierarchy, flat accessible styling, and strong responsive behavior.
+- The existing frontend behavior was demo-ready but visually prototype-like: editorial hero, pill-heavy controls, and loosely grouped investigation panels.
+- The highest-value polish was a frontend-only pass: command-center first viewport, visible readiness state, stronger CTA, summary metrics, cleaner panel hierarchy, and explicit clean-case empty state.
+- Backend contracts, staged Palantir behavior, local-only comparison mode, seeded fallback behavior, and YC package-builder requirements did not need to change for this UI polish pass.
+
 ## Issues Encountered
 | Issue | Resolution |
 |-------|------------|
@@ -72,6 +88,7 @@
 | API venv console scripts point at an older absolute path after the repo move | Run API tests through `.venv/bin/python -m pytest` instead of the stale `.venv/bin/pytest` launcher. |
 | `npm run dev:api` could not import `fraudcopilot` without package install/PYTHONPATH | Pass `--app-dir src` to Uvicorn in the root dev script. |
 | `next dev` returned 500 under Node 25 due broken server-side `localStorage` | Set `NODE_OPTIONS=--no-webstorage` in the frontend dev script. |
+| Production CSS build warned on `align-items: start` mixed support | Replaced `start` alignment values with `flex-start` and reran `npm run build:web` cleanly. |
 
 ## Resources
 - Local instructions: `/Users/edward/Desktop/compiled/AGENTS.md`
@@ -82,6 +99,7 @@
 - Palantir Ontologies v2 apply action API: `https://www.palantir.com/docs/foundry/api/v2/ontologies-v2-resources/actions/apply-action`
 - Palantir Ontologies v2 execute query API: `https://www.palantir.com/docs/foundry/api/v2/ontologies-v2-resources/queries/execute-query`
 - Palantir Ontologies v2 list objects API: `https://www.palantir.com/docs/foundry/api/ontologies-v2-resources/ontology-objects/list-objects`
+- UI/UX skill used for Phase 10: `.codex/skills/ui-ux-pro-max/SKILL.md`
 
 ## Visual/Browser Findings
 - None.

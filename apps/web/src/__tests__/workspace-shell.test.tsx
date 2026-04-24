@@ -111,6 +111,11 @@ describe("CaseWorkspace", () => {
     expect(screen.getByRole("heading", { name: /evidence graph/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /risk findings/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /memo generator/i })).toBeInTheDocument();
+    expect(screen.getByText(/case summary/i)).toBeInTheDocument();
+    expect(screen.getByText(/risk score/i)).toBeInTheDocument();
+    expect(screen.getByText("95/100")).toBeInTheDocument();
+    expect(screen.getByText(/1 document/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 findings/i)).toBeInTheDocument();
     expect(screen.getByText(/matched excluded entity in leie/i)).toBeInTheDocument();
     expect(screen.getByText(/internal memo references excluded contractor/i)).toBeInTheDocument();
     expect(screen.getByText(/prioritize investigator review/i)).toBeInTheDocument();
@@ -121,6 +126,14 @@ describe("CaseWorkspace", () => {
     expect(screen.getByRole("heading", { name: /palantir diagnostics/i })).toBeInTheDocument();
     expect(screen.getByText(/extract_case_facts/i)).toBeInTheDocument();
     expect(screen.getByText(/12 ms/i)).toBeInTheDocument();
+  });
+
+  it("shows a clear empty state when a clean case has no findings", () => {
+    render(<CaseWorkspace caseData={{ ...caseData, overallRiskScore: 0, findings: [] }} />);
+
+    expect(screen.getByText("0/100")).toBeInTheDocument();
+    expect(screen.getByText(/no risk findings detected/i)).toBeInTheDocument();
+    expect(screen.getByText(/this packet is ready for routine documentation/i)).toBeInTheDocument();
   });
 });
 
@@ -135,11 +148,13 @@ describe("HomePage", () => {
     expect(
       screen.getByRole("heading", { name: /fraud investigator copilot/i })
     ).toBeInTheDocument();
-    expect(screen.getByText(/drop in messy evidence, get back a structured case file/i)).toBeInTheDocument();
+    expect(screen.getByText(/live demo command center/i)).toBeInTheDocument();
+    expect(screen.getByText(/turn messy evidence into a structured case file/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /analyze case/i })).toBeInTheDocument();
     expect(screen.getByText(/fastapi: not checked/i)).toBeInTheDocument();
     expect(screen.getByText(/palantir aip: not checked/i)).toBeInTheDocument();
     expect(screen.getByText(/case source: suspicious preset/i)).toBeInTheDocument();
+    expect(screen.getByText(/choose demo packet/i)).toBeInTheDocument();
   });
 
   it("loads the seeded demo case into the workspace when analyze is clicked", async () => {

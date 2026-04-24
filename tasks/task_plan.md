@@ -7,7 +7,7 @@
 Implement a local-first monorepo that ingests a healthcare fraud case packet, extracts provider and claim facts, enriches them with seeded public data and optional NPPES lookup, scores risk deterministically, and presents a 4-panel case workspace with a cited memo draft.
 
 ## Current Phase
-Phase 8: 2026-04-24 Palantir-First Product Upgrade Implementation
+Phase 10: 2026-04-24 Live Demo UI/UX Polish
 
 ## Phases
 ### Phase 1: Repo Setup and Baseline
@@ -63,34 +63,45 @@ Phase 8: 2026-04-24 Palantir-First Product Upgrade Implementation
 - [x] Verify backend tests, frontend tests, production web build, and live demo smoke path
 - **Status:** complete
 
+### Phase 9: 2026-04-24 YC RFS Requirements Refinement
+- [x] Add complaint-ready FCA/qui tam case package builder as the next primary requirement
+- [x] Mention citation, corporate-structure, PDF/OCR, legal-elements, and records-request features as future additions
+- [x] Refresh the backlog so completed Phase 8 work is no longer presented as the next highest-priority work
+- **Status:** complete
+
+### Phase 10: 2026-04-24 Live Demo UI/UX Polish
+- [x] Use `ui-ux-pro-max` guidance for a clean healthcare SaaS dashboard direction
+- [x] Redesign the first viewport as a live demo command center with visible readiness state
+- [x] Add a case summary strip, cleaner investigation panels, and a clean-case empty state
+- [x] Replace prototype styling with a responsive executive-workspace visual system
+- [x] Verify focused frontend tests, full root tests, and production web build
+- **Status:** complete
+
 ## Product Improvement Backlog
 | Priority | Improvement | Why It Matters | Suggested First Step |
 |----------|-------------|----------------|----------------------|
-| P0 | Split Palantir into explicit AIP stages | The current single insight call makes Palantir look bolted on instead of analytically central. | Add `extract_case_facts`, `assess_risk`, and `generate_memo` client methods with per-stage status and fallback behavior. |
-| P0 | Use AIP to extract facts from raw narrative evidence | This turns custom intake from CSV-shaped demo input into a realistic investigator workflow. | Send pasted document text to an optional extraction endpoint and merge returned entities, claims, and relationships into the case file. |
-| P0 | Render a real entity/relationship graph | Fraud demos are more convincing when they show provider, entity, document, and billing relationships rather than a flat timeline. | Add graph nodes/edges to the API response and render a lightweight network visualization in the Evidence Graph panel. |
-| P0 | Real intake path for uploaded or pasted evidence | The current web flow still uses a seeded demo packet, so user-provided evidence is not yet the main product path. | Add a frontend intake form that creates a case, uploads text/CSV documents, then analyzes that actual payload. |
-| P0 | Citation-grade evidence links | Investigator trust depends on seeing exactly which document and quote produced each flag. | Persist source document IDs, quote text, and simple location metadata on each risk flag, then render them in the Risk Findings and Memo panels. |
-| P1 | Show Palantir output per panel | Judges should see where Palantir contributes, not just a text block at the end. | Add `[AIP]` badges for extracted facts, risk factors, graph edges, and memo provenance. |
-| P1 | Palantir diagnostics and local-only toggle | Live demos need transparency when credentials or endpoint latency vary. | Add a collapsible diagnostics panel with configured stages, latency, raw responses, errors, and a local-only comparison control. |
-| P1 | Score transparency panel | A single risk score is less credible without a visible rule-by-rule breakdown. | Add score deltas, threshold comparisons, and rule labels to the workspace so users can audit how the score was calculated. |
-| P1 | Clean-vs-suspicious demo switcher | A hackathon demo is stronger when it shows the system can avoid over-flagging a normal provider. | Let the user run both seeded demo packets from the UI and compare risk scores/findings. |
-| P1 | Optional live NPPES verification with offline fallback | Seeded data keeps demos stable, but live verification increases credibility when network access is available. | Add an environment-gated NPPES lookup path that falls back to `data/reference/npi_registry.json`. |
-| P2 | Demo runbook and backend health indicator | The product is easier to judge when setup and API connectivity are obvious. | Add concise local run instructions and show API-connected vs fallback state in the UI header. |
-| P2 | Broader seeded benchmark coverage | More procedure and specialty examples make the anomaly scoring feel less toy-like. | Add a few more CMS benchmark rows and tests for specialty/procedure mismatch cases. |
+| P0 | Complaint-ready case package builder | This maps the product directly to the YC brief: take an insider tip and package findings into complaint-ready files for FCA/qui tam teams. | Add a package model with theory of liability, allegation-evidence map, exhibit index, damages estimate, open questions, and export sections. |
+| P0 | Citation-grade evidence model | Complaint-ready output depends on every allegation being traceable to a document, quote, source location, confidence, and review status. | Extend risk flags and memo inputs with document IDs, quote spans, and reviewed/unreviewed state. |
+| P1 | Corporate structure and control tracing | The YC prompt calls out opaque corporate structures, and fraud networks often depend on billing companies, owners, MSOs, shared addresses, and control relationships. | Expand graph entity types and relationship extraction around ownership, management, address, officer, and billing-control links. |
+| P1 | Messy PDF/OCR intake | Real law-firm and agency workflows start with PDFs, scans, claim exports, emails, and tables rather than clean pasted text. | Add multi-document PDF upload with extracted text/table previews and preserve source page references. |
+| P1 | Legal elements checklist | FCA users need to know whether the record supports false claim, knowledge, materiality, payment, damages, and source credibility. | Add a checklist model and panel that scores each element from linked findings. |
+| P2 | Records request and subpoena drafting | Case teams need concrete next steps after triage, especially missing claims, ownership, billing, and communication records. | Generate editable follow-up request drafts from weak evidence areas and graph relationships. |
+| P2 | Score transparency panel | A single risk score is less credible without visible rule-by-rule deltas and threshold comparisons. | Add score deltas, benchmark thresholds, and rule labels to the workspace. |
+| P2 | Optional live NPPES verification with offline fallback | Seeded data keeps demos stable, but live verification increases credibility when network access is available. | Add an environment-gated NPPES lookup path that falls back to `data/reference/npi_registry.json`. |
+| P2 | Broader seeded benchmark coverage | More procedure and specialty examples make anomaly scoring feel less synthetic. | Add more CMS benchmark rows and tests for specialty/procedure mismatch cases. |
 
 ## Recommended Next Actions
-1. Implement the stage-based Palantir pipeline first: extraction, risk assessment, and memo generation with strict local fallback.
-2. Add the graph-shaped case model and Evidence Graph visualization next, because it makes the investigative workflow visible.
-3. Expand deterministic fallback scoring and reference rows in parallel with UI badges, so the demo remains credible when Palantir is not configured.
-4. Defer Foundry ontology persistence and webhook/SSE enrichment until tenant-specific ontology, action, and callback details are available.
+1. Design the complaint-ready package contract on top of the existing analyzed case response.
+2. Implement citation-grade evidence links before package export, because the package builder depends on source-linked proof.
+3. Add a workspace panel or export preview for theory of liability, allegation-evidence map, exhibits, damages estimate, open questions, and follow-up requests.
+4. Keep PDF/OCR, corporate-control enrichment, legal-elements scoring, and subpoena drafting as follow-on slices after the package builder has a working demo path.
 
 ## Key Questions
-1. Should the next implementation assume real Palantir AIP URLs will be supplied, or should it ship with demo-safe mock/fallback responses only?
-2. What exact JSON contracts should the AIP Logic functions return for extraction, risk assessment, memo generation, and optional recommended actions?
-3. Do we have Foundry ontology API names, object types, action API names, and query API names, or should ontology persistence stay out of scope for this demo iteration?
-4. Should file upload/PDF/OCR be included now, or should this phase stay focused on pasted text plus CSV to protect demo timing?
-5. What is the target demo path: Palantir-configured live run, local-only fallback run, or an A/B comparison between the two?
+1. Should the first package export be a Markdown/HTML preview, downloadable PDF/DOCX, or both?
+2. Which liability theories should be supported first: excluded-provider billing, upcoding, medically unnecessary billing, kickbacks, false certification, or billing-company control?
+3. Should the package include attorney-review workflow states now, or stay single-user and demo-focused?
+4. Should damages estimates use simple seeded assumptions, user-entered claim totals, or a live claims export?
+5. Should records-request drafting ship with the package builder or remain a separate follow-on feature?
 
 ## Decisions Made
 | Decision | Rationale |
@@ -106,6 +117,8 @@ Phase 8: 2026-04-24 Palantir-First Product Upgrade Implementation
 | Allow local Next.js origins through FastAPI CORS | The live demo runs the frontend and backend on different localhost ports. |
 | Make Phase 8 Palantir-first but fallback-safe | A live demo should showcase Palantir where configured while still working if external credentials, tenant functions, or network access fail. |
 | Defer Foundry ontology writes until action/query details are provided | Official Palantir APIs apply ontology changes through configured actions, so generic object-create code would be speculative without tenant-specific setup. |
+| Keep Phase 10 as frontend-only polish | The user asked for a cleaner live-demo UI, so API contracts, scoring, Palantir behavior, and package-builder requirements stayed unchanged. |
+| Use a healthcare-trust executive workspace direction | `ui-ux-pro-max` recommended a clean healthcare SaaS palette, flat accessible styling, strong hierarchy, and responsive dashboard scanability. |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -115,6 +128,7 @@ Phase 8: 2026-04-24 Palantir-First Product Upgrade Implementation
 | `uv run pytest` tried to build the unfinished local package during the red phase | 1 | Switched red/green test runs to `.venv/bin/pytest -q` until packaging was configured. |
 | Vitest compiled JSX in classic mode and threw `React is not defined` | 1 | Enabled the automatic JSX transform in `apps/web/vitest.config.ts`. |
 | Final `uv sync` needed network to fetch the `hatchling` build backend | 1 | Re-ran the sync with network permission and verified the editable install. |
+| Phase 10 production build warned about `align-items: start` mixed support | 1 | Replaced `start` alignment values with `flex-start` and reran the production build cleanly. |
 
 ## Notes
 - Follow the approved blueprint unless local implementation constraints force a narrower interpretation.

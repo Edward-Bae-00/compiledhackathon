@@ -142,6 +142,38 @@
   - `tasks/progress.md` (updated)
   - `PROJECT_MEMORY.md` (updated)
 
+### Phase 9: YC RFS Requirements Refinement
+- **Status:** complete
+- Actions taken:
+  - Added complaint-ready FCA/qui tam case packages as the next primary requirement in the README.
+  - Listed citation-grade evidence, corporate structure/control tracing, PDF/OCR intake, legal-elements checklist, and records-request drafting as follow-on requirements.
+  - Refreshed the product backlog so the next work reflects package-building rather than completed Phase 8 Palantir and graph work.
+  - Recorded the YC RFS fit decision in findings and project memory.
+- Files created/modified:
+  - `README.md` (updated)
+  - `tasks/task_plan.md` (updated)
+  - `tasks/findings.md` (updated)
+  - `tasks/progress.md` (updated)
+  - `PROJECT_MEMORY.md` (updated)
+
+### Phase 10: Live Demo UI/UX Polish
+- **Status:** complete
+- Actions taken:
+  - Used `ui-ux-pro-max` to ground the visual direction in a clean healthcare SaaS dashboard system.
+  - Added failing frontend assertions for live-demo command-center copy, case summary metrics, and a clean-case empty state before changing production UI.
+  - Reworked the first viewport into a live demo command center with clearer CTA, readiness status, local-only comparison control, and intake framing.
+  - Added a case summary strip, improved panel headings, cleaner graph/finding/memo hierarchy, and an explicit no-findings state for clean cases.
+  - Replaced the previous prototype CSS with a responsive light executive-workspace visual system using healthcare-trust colors, 8px radii, visible focus states, and reduced-motion handling.
+- Files created/modified:
+  - `apps/web/app/page.tsx` (updated)
+  - `apps/web/app/globals.css` (updated)
+  - `apps/web/src/components/case-workspace.tsx` (updated)
+  - `apps/web/src/__tests__/workspace-shell.test.tsx` (updated)
+  - `tasks/task_plan.md` (updated)
+  - `tasks/progress.md` (updated)
+  - `tasks/findings.md` (updated)
+  - `PROJECT_MEMORY.md` (updated)
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -167,6 +199,12 @@
 | Phase 8 JSON validation | Node JSON parse for shared schema and reference data | JSON artifacts parse cleanly | `json ok` | ✓ |
 | Phase 8 API smoke | `curl -s http://127.0.0.1:8000/health` | Backend responds locally | `{"status":"ok"}` | ✓ |
 | Phase 8 frontend smoke | `curl -s -o /tmp/compiledhackathon_frontend.html -w "%{http_code}" http://127.0.0.1:3000` | Browser page responds locally | `200` | ✓ |
+| Phase 9 documentation check | `git diff --check` | No whitespace errors in documentation/backlog changes | No output; exit 0 | ✓ |
+| Phase 9 documentation review | Read changed README and task-plan sections | Current-vs-planned requirements are clearly separated and package builder is ranked first | Sections reviewed with `sed` | ✓ |
+| Phase 10 frontend red phase | `npm run test --workspace apps/web -- src/__tests__/workspace-shell.test.tsx` after adding UI assertions | Fail on missing command-center copy, summary metrics, and clean-case empty state | Failed for the expected missing UI text | ✓ |
+| Phase 10 focused frontend tests | `npm run test --workspace apps/web -- src/__tests__/workspace-shell.test.tsx` | Live-demo UI, workspace, API mapping, preset, custom intake, local-only tests pass | `8 passed` | ✓ |
+| Phase 10 production web build | `npm run build:web` | Next.js production build succeeds cleanly | `Compiled successfully`; route `/` generated | ✓ |
+| Phase 10 full test suite | `npm run test` | Web and API tests pass from root | Web: `8 passed`; API: `8 passed` | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -178,12 +216,13 @@
 | 2026-04-24 18:10 | `.venv/bin/pytest` failed because its shebang pointed at `/Users/edward/Desktop/compiled/...` | 1 | Used `.venv/bin/python -m pytest` from the current repo venv. |
 | 2026-04-24 18:22 | `npm run dev:api` started Uvicorn but the spawned app process failed with `ModuleNotFoundError: No module named 'fraudcopilot'` | 1 | Added `--app-dir src` to the API dev script. |
 | 2026-04-24 18:24 | `next dev` returned HTTP 500 with `localStorage.getItem is not a function` under Node 25 | 1 | Added `NODE_OPTIONS=--no-webstorage` to `dev:web`. |
+| 2026-04-24 19:30 | `npm run build:web` warned that CSS `start` alignment has mixed support | 1 | Replaced `start` alignment values with `flex-start` and reran the build cleanly. |
 
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 6: 2026-04-24 Product Improvement Planning |
-| Where am I going? | The MVP implementation is complete; the next valuable work is real intake, citations, and score transparency |
-| What's the goal? | Implement the healthcare fraud case-ingestion and risk-triage MVP described in `tasks/task_plan.md` |
-| What have I learned? | The local-first architecture, seeded data strategy, and backend/frontend boundaries are working; the biggest product gap is that the UI still analyzes a seeded packet rather than user-provided evidence |
-| What have I done? | Implemented the backend, frontend, shared contract artifact, demo data, verified tests/build, and added a 2026-04-24 product-improvement backlog |
+| Where am I? | Phase 10: 2026-04-24 Live Demo UI/UX Polish |
+| Where am I going? | The next product slice is still the complaint-ready FCA/qui tam case package builder, with citation-grade evidence as its prerequisite |
+| What's the goal? | Keep the live demo visually credible while preserving the existing local-first analysis, Palantir diagnostics, and fallback behavior |
+| What have I learned? | `ui-ux-pro-max` points this product toward a clean healthcare SaaS dashboard, not a marketing landing page or dense technical console |
+| What have I done? | Polished the frontend into a live demo command center, added summary metrics and clean-case empty state, refreshed CSS, and verified focused tests, full tests, and production build |
