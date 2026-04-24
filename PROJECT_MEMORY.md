@@ -22,6 +22,7 @@
 - The next Palantir upgrade should be stage-based and fallback-safe: extraction, risk assessment, and memo generation should be optional server-side AIP calls with local deterministic behavior preserved.
 - Foundry ontology persistence should be deferred until the tenant's ontology API names, action API names, query API names, and permissions are known.
 - Local-only comparison is available with `POST /cases/{case_id}/analyze?force_local=true` and the frontend `Local-only` toggle.
+- `README.md` now documents the live demo runbook, staged Palantir AIP environment variables, function request/response contracts, diagnostics fields, and Foundry ontology follow-up guidance.
 
 ## Verification Evidence
 - Root tests pass with `npm run test`.

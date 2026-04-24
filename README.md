@@ -1,14 +1,29 @@
 # Fraud Investigator Copilot
 
-Local-first healthcare fraud triage demo with a Next.js workspace, FastAPI backend, seeded public-data references, deterministic risk scoring, and optional Palantir AIP enrichment.
+Local-first healthcare fraud triage demo with a Next.js workspace, FastAPI backend, seeded public-data references, deterministic risk scoring, evidence graph output, and optional staged Palantir AIP enrichment.
 
-## Local Demo
+## What the Demo Shows
+
+- Intake of a healthcare fraud tip plus claim or narrative evidence.
+- Local extraction and deterministic risk scoring with seeded LEIE, NPPES, and CMS benchmark data.
+- Optional Palantir AIP stages for document extraction, risk assessment, and memo generation.
+- Entity relationship graph connecting providers, procedures, documents, reference matches, and billing entities.
+- A memo panel with local or AIP provenance plus Palantir diagnostics for configured stages.
+
+## Run the Local Demo
+
+Prerequisites:
+
+- Node.js and npm.
+- Python with `uv`.
+- Optional: Palantir Foundry/AIP access and a bearer token.
 
 Install dependencies:
 
 ```bash
 npm install
 cd apps/api && uv sync --group dev
+cd ../..
 ```
 
 Start the backend in one terminal:
@@ -23,23 +38,61 @@ Start the frontend in another terminal:
 npm run dev:web
 ```
 
-Open the Next.js URL, usually `http://localhost:3000`. The live demo can run in three modes:
+Open:
 
-- `Suspicious Preset`: shows LEIE exclusion and abnormal billing findings.
-- `Clean Preset`: shows a low-risk control case.
-- `Custom Intake`: lets you paste a title, tip, document name, document type, and CSV/text content.
+```text
+http://localhost:3000
+```
 
-The UI status strip shows whether the browser is using the FastAPI backend or the local fallback packet, whether Palantir AIP returned staged enrichment, and which case source is active. Enable `Local-only` in the strip to force an A/B comparison run without Palantir calls.
+API health check:
 
-## Optional Palantir AIP
+```bash
+curl http://127.0.0.1:8000/health
+```
 
-For the strongest demo, create three AIP Logic functions in Palantir and copy each runnable request URL from the function's Uses tab. The app calls them server-side with the same bearer token:
+Expected response:
 
-- `extract_case_facts`: accepts raw case and document text; returns `entities`, `claims`, and `relationships`.
-- `assess_risk`: accepts the structured case file and graph; returns `risk_factors`.
-- `generate_memo`: accepts the final case file; returns `memo_markdown` and optional `recommendation`.
+```json
+{"status":"ok"}
+```
 
-Configure the backend environment before starting `npm run dev:api`:
+Demo flow:
+
+1. Select `Suspicious Preset` and click `Analyze Case`.
+2. Show the risk score, LEIE/CMS findings, graph nodes and edges, memo, and Palantir diagnostics.
+3. Select `Clean Preset` and run again to show low-risk restraint.
+4. Select `Custom Intake`, paste narrative evidence or CSV content, and run the API-backed analysis.
+5. Enable `Local-only` in the status strip to force an A/B run without Palantir calls.
+
+The app remains demo-safe if the backend or Palantir is unavailable. The frontend falls back to seeded packets if the local API cannot be reached, and the backend falls back to local extraction/scoring/memo output if Palantir is not configured or fails.
+
+## Palantir Integration Overview
+
+The Palantir integration is implemented server-side in:
+
+```text
+apps/api/src/fraudcopilot/app.py
+```
+
+Main integration points:
+
+- `PalantirAipClient.from_env()` reads environment variables.
+- `extract_case_facts()` calls the extraction AIP Logic function.
+- `assess_risk()` calls the risk assessment AIP Logic function.
+- `generate_memo()` calls the memo generation AIP Logic function.
+- `/cases/{case_id}/analyze` orchestrates local extraction, optional AIP extraction, local scoring, optional AIP risk factors, graph building, optional AIP memo generation, and diagnostics.
+
+The frontend consumes the returned `palantir`, `palantir_insight`, `risk_flags.source`, `memo.source`, and `evidence_graph` fields to show visible AIP contributions in each panel.
+
+Official Palantir references:
+
+- AIP Logic getting started: https://www.palantir.com/docs/foundry/logic/getting-started
+- Ontologies v2 apply action API: https://www.palantir.com/docs/foundry/api/v2/ontologies-v2-resources/actions/apply-action
+- Ontologies v2 execute query API: https://www.palantir.com/docs/foundry/api/v2/ontologies-v2-resources/queries/execute-query
+
+## Configure Palantir AIP
+
+Create three AIP Logic functions in Palantir. Copy each function's runnable request URL from its Uses tab and export the URLs before starting the FastAPI backend.
 
 ```bash
 export PALANTIR_AIP_EXTRACT_FACTS_URL="https://<your-foundry-host>/<extract-function-run-endpoint>"
@@ -49,13 +102,209 @@ export PALANTIR_API_TOKEN="<your-token>"
 export PALANTIR_HOSTNAME="<your-foundry-host>" # optional status check
 ```
 
-Legacy single-call mode is still supported with `PALANTIR_AIP_LOGIC_URL`, but the staged variables make Palantir visible in the intake, graph, findings, memo, and diagnostics panels.
+Optional controls:
 
-Do not commit tokens. If these variables are missing, `PALANTIR_FORCE_LOCAL=true`, the UI `Local-only` toggle is enabled, or any request fails, the app returns clearly labeled local fallback findings so the live demo remains usable.
+```bash
+export PALANTIR_FORCE_LOCAL=true
+export PALANTIR_AIP_LOGIC_URL="https://<your-foundry-host>/<legacy-single-function-run-endpoint>"
+```
+
+- `PALANTIR_FORCE_LOCAL=true` skips Palantir calls and returns local-only diagnostics.
+- `PALANTIR_AIP_LOGIC_URL` keeps legacy single-call recommendation mode available if you do not have staged functions yet.
+- Do not commit tokens or `.env` files.
+
+## AIP Function Contracts
+
+Each AIP Logic function receives JSON from the backend. The backend also includes a `case_file_json` string copy of the same payload for functions that prefer a single string input.
+
+### `extract_case_facts`
+
+Purpose: Convert raw pasted documents, tips, emails, notes, and claim summaries into structured facts.
+
+Environment variable:
+
+```bash
+PALANTIR_AIP_EXTRACT_FACTS_URL
+```
+
+Request shape:
+
+```json
+{
+  "case": {
+    "id": "case-id",
+    "title": "Narrative Billing Network",
+    "tip_text": "Tip text",
+    "status": "draft",
+    "overall_risk_score": 0,
+    "created_at": "2026-04-24T00:00:00Z"
+  },
+  "documents": [
+    {
+      "id": "document-id",
+      "filename": "tip-email.txt",
+      "doc_type": "memo",
+      "content": "Raw evidence text"
+    }
+  ],
+  "case_file_json": "{...}"
+}
+```
+
+Expected response shape:
+
+```json
+{
+  "entities": [
+    {
+      "id": "aip-provider-1",
+      "entity_type": "provider",
+      "name": "Dr. Narrative Provider",
+      "npi": "9999888877",
+      "source": "Palantir AIP"
+    }
+  ],
+  "claims": [
+    {
+      "provider_name": "Dr. Narrative Provider",
+      "npi": "9999888877",
+      "procedure_code": "G0483",
+      "service_date": "2025-02-10",
+      "amount": 7200,
+      "patient_count": 94,
+      "source": "Palantir AIP"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "Dr. Narrative Provider",
+      "target": "Apex Review Group",
+      "relationship": "billing_management",
+      "evidence": "Apex Review Group managed billing for the provider.",
+      "source_type": "Palantir AIP"
+    }
+  ]
+}
+```
+
+### `assess_risk`
+
+Purpose: Add Palantir-sourced risk factors after local extraction, enrichment, scoring, and graph construction.
+
+Environment variable:
+
+```bash
+PALANTIR_AIP_ASSESS_RISK_URL
+```
+
+Request shape:
+
+```json
+{
+  "case": {
+    "title": "Narrative Billing Network",
+    "status": "analyzed",
+    "overall_risk_score": 45
+  },
+  "documents": [],
+  "external_matches": [],
+  "risk_flags": [],
+  "timeline": [],
+  "evidence_graph": {
+    "nodes": [],
+    "edges": []
+  },
+  "memo": {
+    "title": "Draft Investigator Memo",
+    "body_markdown": "Local memo",
+    "source": "Local Rule"
+  },
+  "case_file_json": "{...}"
+}
+```
+
+Expected response shape:
+
+```json
+{
+  "risk_factors": [
+    {
+      "severity": "high",
+      "reason_code": "aip_billing_network_risk",
+      "score_delta": 35,
+      "summary": "AIP found a billing company linkage tied to abnormal volume.",
+      "why_flagged": "The provider, billing company, and claims volume form a high-risk cluster.",
+      "external_validation": "Palantir AIP network and risk assessment",
+      "evidence_quotes": ["Apex Review Group managed billing for the provider."]
+    }
+  ]
+}
+```
+
+### `generate_memo`
+
+Purpose: Replace the local template memo with a more natural investigator memo once all local and AIP risk factors are known.
+
+Environment variable:
+
+```bash
+PALANTIR_AIP_GENERATE_MEMO_URL
+```
+
+Request shape: same structured case file used by `assess_risk`, but with merged local and AIP risk factors.
+
+Expected response shape:
+
+```json
+{
+  "title": "AIP Investigator Memo",
+  "memo_markdown": "# AIP Investigator Memo\n\nPalantir AIP identified a provider-billing-company relationship and abnormal billing volume.",
+  "recommendation": "Escalate for investigator review and preserve billing-company records."
+}
+```
+
+## Palantir Status and Diagnostics
+
+Check Palantir configuration status:
+
+```bash
+curl http://127.0.0.1:8000/integrations/palantir/status
+```
+
+Analyze a case with local-only mode from the API:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/cases/<case_id>/analyze?force_local=true"
+```
+
+The analyze response includes:
+
+- `palantir.mode`: `not_configured`, `forced_local`, `live`, `partial`, or `error`.
+- `palantir.stages`: per-stage `configured`, `status`, `latency_ms`, `error_summary`, and `raw_response`.
+- `palantir_insight`: summary recommendation for the memo panel.
+- `risk_flags[].source`: `Local Rule` or `Palantir AIP`.
+- `memo.source`: `Local Rule` or `Palantir AIP`.
+
+## Foundry Ontology Notes
+
+This repo does not require Foundry ontology object writes for the live demo. If you add persistent Foundry storage later, prefer configured Ontology Actions for writes and tenant-specific Ontology Queries for reads/searches. Do not hard-code generic object creation assumptions without your ontology API names, action API names, query API names, and permissions.
 
 ## Verification
 
+Run tests:
+
 ```bash
 npm run test
+```
+
+Run a production web build:
+
+```bash
 npm run build:web
 ```
+
+Expected current verification:
+
+- Web tests: `7 passed`
+- API tests: `8 passed`
+- Next.js production build: compiles successfully
