@@ -10,5 +10,29 @@
     "match_key": "apex review group",
     "entity_type": "entity",
     "reason": "Excluded billing contractor"
+  },
+  {
+    "name": "BrightPath Billing LLC",
+    "match_key": "brightpath billing llc",
+    "entity_type": "entity",
+    "reason": "Excluded billing services organization"
+  },
+  {
+    "name": "Dr. Suspended Lab Owner",
+    "match_key": "dr. suspended lab owner",
+    "entity_type": "individual",
+    "reason": "Program exclusion tied to laboratory kickback settlement"
+  },
+  {
+    "name": "Metro DME Network",
+    "match_key": "metro dme network",
+    "entity_type": "entity",
+    "reason": "Excluded durable medical equipment supplier"
+  },
+  {
+    "name": "Northstar Referral Partners",
+    "match_key": "northstar referral partners",
+    "entity_type": "entity",
+    "reason": "Excluded referral management company"
   }
 ]

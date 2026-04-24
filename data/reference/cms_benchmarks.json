@@ -16,5 +16,44 @@
     ],
     "p90_amount": 250,
     "p90_patient_count": 20
+  },
+  {
+    "procedure_code": "G0483",
+    "description": "Definitive drug testing",
+    "allowed_taxonomies": [
+      "291U00000X",
+      "208VP0000X"
+    ],
+    "p90_amount": 1800,
+    "p90_patient_count": 35
+  },
+  {
+    "procedure_code": "E1390",
+    "description": "Oxygen concentrator rental",
+    "allowed_taxonomies": [
+      "332B00000X"
+    ],
+    "p90_amount": 1200,
+    "p90_patient_count": 30
+  },
+  {
+    "procedure_code": "97110",
+    "description": "Therapeutic exercises",
+    "allowed_taxonomies": [
+      "225100000X",
+      "225200000X"
+    ],
+    "p90_amount": 900,
+    "p90_patient_count": 40
+  },
+  {
+    "procedure_code": "99213",
+    "description": "Established patient office visit, lower complexity",
+    "allowed_taxonomies": [
+      "207Q00000X",
+      "2084P0800X"
+    ],
+    "p90_amount": 320,
+    "p90_patient_count": 28
   }
 ]

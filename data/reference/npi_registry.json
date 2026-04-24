@@ -10,5 +10,29 @@
     "taxonomy_code": "207Q00000X",
     "taxonomy_display": "Family Medicine",
     "address": "88 Clinic Square, Richmond, VA"
+  },
+  "2222333344": {
+    "name": "Dr. Pain Management Reviewer",
+    "taxonomy_code": "208VP0000X",
+    "taxonomy_display": "Pain Medicine",
+    "address": "17 Procedure Way, Newark, NJ"
+  },
+  "3333444455": {
+    "name": "Atlas Toxicology Lab",
+    "taxonomy_code": "291U00000X",
+    "taxonomy_display": "Clinical Medical Laboratory",
+    "address": "410 Specimen Loop, Tampa, FL"
+  },
+  "4444555566": {
+    "name": "Harbor Durable Medical Supply",
+    "taxonomy_code": "332B00000X",
+    "taxonomy_display": "Durable Medical Equipment & Medical Supplies",
+    "address": "700 Mobility Road, Phoenix, AZ"
+  },
+  "6666777788": {
+    "name": "Dr. Behavioral Health Review",
+    "taxonomy_code": "2084P0800X",
+    "taxonomy_display": "Psychiatry",
+    "address": "25 Care Plan Street, Columbus, OH"
   }
 }

@@ -14,7 +14,24 @@ export type WorkspaceCaseData = {
     whyFlagged: string;
     externalValidation: string;
     evidenceQuotes: string[];
+    source?: string;
   }>;
+  evidenceGraph?: {
+    nodes: Array<{
+      id: string;
+      label: string;
+      type: string;
+      source: string;
+    }>;
+    edges: Array<{
+      id: string;
+      source: string;
+      target: string;
+      relationship: string;
+      evidence: string;
+      sourceType: string;
+    }>;
+  };
   timeline: Array<{
     id: string;
     label: string;
@@ -24,19 +41,44 @@ export type WorkspaceCaseData = {
   memo: {
     title: string;
     body: string;
+    source?: string;
   };
   externalMatches?: Array<{
     id: string;
     source: string;
     summary: string;
   }>;
+  palantirInsight?: {
+    provider: string;
+    status: string;
+    recommendation: string;
+    errorSummary?: string | null;
+  };
+  palantir?: {
+    provider: string;
+    mode: string;
+    stages: Array<{
+      stage: string;
+      configured: boolean;
+      status: string;
+      latencyMs: number;
+      errorSummary?: string | null;
+      rawResponse?: unknown;
+    }>;
+  };
 };
 
 type CaseWorkspaceProps = {
   caseData: WorkspaceCaseData;
 };
 
+function sourceBadge(source?: string): string {
+  return source?.toLowerCase().includes("palantir") ? "AIP" : "Local";
+}
+
 export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
+  const nodeLabels = new Map(caseData.evidenceGraph?.nodes.map((node) => [node.id, node.label]) ?? []);
+
   return (
     <div className="workspace-grid">
       <section aria-label="Case Intake">
@@ -64,6 +106,32 @@ export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
         <p className="muted">
           Connect providers, procedure codes, and supporting documents into a timeline an investigator can scan quickly.
         </p>
+        {caseData.evidenceGraph?.nodes.length ? (
+          <div className="network-graph" aria-label="Entity relationship graph">
+            <div className="graph-node-list">
+              {caseData.evidenceGraph.nodes.map((node) => (
+                <div className="graph-node" data-node-type={node.type} key={node.id}>
+                  <strong>{node.label}</strong>
+                  <span className="muted">{node.type}</span>
+                  <span className="chip chip-source">{sourceBadge(node.source)}</span>
+                </div>
+              ))}
+            </div>
+            <ul className="graph-edge-list">
+              {caseData.evidenceGraph.edges.map((edge) => (
+                <li key={edge.id}>
+                  <div className="edge-row">
+                    <strong>{nodeLabels.get(edge.source) ?? edge.source}</strong>
+                    <span>{edge.relationship}</span>
+                    <strong>{nodeLabels.get(edge.target) ?? edge.target}</strong>
+                    <span className="chip chip-source">{sourceBadge(edge.sourceType)}</span>
+                  </div>
+                  <div className="muted">{edge.evidence}</div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <ul className="timeline-list">
           {caseData.timeline.map((event) => (
             <li key={event.id}>
@@ -85,9 +153,12 @@ export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
         <ul className="finding-list">
           {caseData.findings.map((finding) => (
             <li key={finding.id}>
-              <span className="chip finding-severity" data-severity={finding.severity}>
-                {finding.severity}
-              </span>
+              <div className="finding-heading">
+                <span className="chip finding-severity" data-severity={finding.severity}>
+                  {finding.severity}
+                </span>
+                <span className="chip chip-source">{sourceBadge(finding.source)}</span>
+              </div>
               <strong>{finding.summary}</strong>
               <p>{finding.whyFlagged}</p>
               <div className="muted">Validation: {finding.externalValidation}</div>
@@ -113,7 +184,47 @@ export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
           Turn the rule-backed findings into a referral-ready narrative with citations an investigator can follow.
         </p>
         <h3>{caseData.memo.title}</h3>
+        <div className="muted memo-source">Memo source: {caseData.memo.source ?? "Local Rule"}</div>
         <div className="memo-body">{caseData.memo.body}</div>
+        {caseData.palantirInsight ? (
+          <div className="palantir-insight">
+            <div className="palantir-heading">
+              <strong>{caseData.palantirInsight.provider}</strong>
+              <span className="chip chip-status">{caseData.palantirInsight.status}</span>
+            </div>
+            <p>{caseData.palantirInsight.recommendation}</p>
+            {caseData.palantirInsight.errorSummary ? (
+              <div className="muted">Error: {caseData.palantirInsight.errorSummary}</div>
+            ) : null}
+          </div>
+        ) : null}
+        {caseData.palantir ? (
+          <div className="palantir-diagnostics">
+            <h3>Palantir Diagnostics</h3>
+            <div className="case-meta">
+              <span className="chip chip-status">{caseData.palantir.mode}</span>
+              <span className="chip chip-source">{caseData.palantir.provider}</span>
+            </div>
+            <ul className="diagnostic-list">
+              {caseData.palantir.stages.map((stage) => (
+                <li key={stage.stage}>
+                  <div className="diagnostic-row">
+                    <strong>{stage.stage}</strong>
+                    <span className="chip chip-status">{stage.status}</span>
+                    <span className="muted">{stage.latencyMs} ms</span>
+                  </div>
+                  {stage.errorSummary ? <div className="muted">Error: {stage.errorSummary}</div> : null}
+                  {stage.rawResponse ? (
+                    <details>
+                      <summary>Raw response</summary>
+                      <pre>{JSON.stringify(stage.rawResponse, null, 2)}</pre>
+                    </details>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
     </div>
   );

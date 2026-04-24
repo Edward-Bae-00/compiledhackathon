@@ -8,7 +8,10 @@
     "external_matches",
     "risk_flags",
     "timeline",
-    "memo"
+    "evidence_graph",
+    "memo",
+    "palantir_insight",
+    "palantir"
   ],
   "properties": {
     "case": {
@@ -53,7 +56,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "severity", "reason_code", "score_delta", "summary", "why_flagged", "external_validation", "evidence_quotes"],
+        "required": ["id", "severity", "reason_code", "score_delta", "summary", "why_flagged", "external_validation", "evidence_quotes", "source"],
         "properties": {
           "id": { "type": "string" },
           "severity": { "type": "string" },
@@ -65,7 +68,8 @@
           "evidence_quotes": {
             "type": "array",
             "items": { "type": "string" }
-          }
+          },
+          "source": { "type": "string" }
         }
       }
     },
@@ -82,12 +86,80 @@
         }
       }
     },
+    "evidence_graph": {
+      "type": "object",
+      "required": ["nodes", "edges"],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "type", "source"],
+            "properties": {
+              "id": { "type": "string" },
+              "label": { "type": "string" },
+              "type": { "type": "string" },
+              "source": { "type": "string" }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "source", "target", "relationship", "evidence", "source_type"],
+            "properties": {
+              "id": { "type": "string" },
+              "source": { "type": "string" },
+              "target": { "type": "string" },
+              "relationship": { "type": "string" },
+              "evidence": { "type": "string" },
+              "source_type": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
     "memo": {
       "type": "object",
-      "required": ["title", "body"],
+      "required": ["title", "body_markdown", "source"],
       "properties": {
         "title": { "type": "string" },
-        "body": { "type": "string" }
+        "body_markdown": { "type": "string" },
+        "source": { "type": "string" }
+      }
+    },
+    "palantir_insight": {
+      "type": "object",
+      "required": ["provider", "status", "recommendation"],
+      "properties": {
+        "provider": { "type": "string" },
+        "status": { "type": "string" },
+        "recommendation": { "type": "string" },
+        "error_summary": { "type": ["string", "null"] }
+      }
+    },
+    "palantir": {
+      "type": "object",
+      "required": ["provider", "mode", "stages"],
+      "properties": {
+        "provider": { "type": "string" },
+        "mode": { "type": "string" },
+        "stages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["stage", "configured", "status", "latency_ms"],
+            "properties": {
+              "stage": { "type": "string" },
+              "configured": { "type": "boolean" },
+              "status": { "type": "string" },
+              "latency_ms": { "type": "integer" },
+              "error_summary": { "type": ["string", "null"] },
+              "raw_response": true
+            }
+          }
+        }
       }
     }
   }
