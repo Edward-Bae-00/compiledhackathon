@@ -1,0 +1,13 @@
+{
+  "title": "Specialty Procedure Mismatch Review",
+  "tip_text": "Auditor asks why a family medicine provider is billing a high-complexity genetic test.",
+  "documents": [
+    {
+      "filename": "genetic-testing-claims.csv",
+      "doc_type": "claim_summary",
+      "content": "npi,procedure_code,service_date,amount,patient_count,provider_name\n1111222233,81225,2025-02-11,6800,44,Dr. Clean Provider\n"
+    }
+  ],
+  "identity_policy": "synthetic_anonymized",
+  "source_pattern": "DOJ Health Care Fraud public releases"
+}

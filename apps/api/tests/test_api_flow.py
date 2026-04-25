@@ -51,7 +51,10 @@ def test_analysis_flow_returns_case_file_with_findings():
 
     assert payload["case"]["overall_risk_score"] >= 60
     assert any(match["source_name"] == "LEIE" for match in payload["external_matches"])
-    assert any(flag["reason_code"] == "excluded_entity_match" for flag in payload["risk_flags"])
+    reason_codes = {flag["reason_code"] for flag in payload["risk_flags"]}
+    assert "excluded_entity_match" in reason_codes
+    assert "abnormal_billing_percentile" in reason_codes
+    assert "high_claim_volume" in reason_codes
     assert payload["memo"]["body_markdown"]
     assert any(event["source"] == "internal-note.txt" for event in payload["timeline"])
     assert payload["palantir_insight"]["provider"] == "Palantir AIP"
@@ -105,8 +108,34 @@ def test_case_detail_endpoints_expose_analysis_outputs():
         for flag in analysis_payload["risk_flags"]
     )
     assert isinstance(findings_response.json()["risk_flags"], list)
+    assert findings_response.json()["risk_flags"] == []
     assert isinstance(timeline_response.json()["timeline"], list)
     assert "body_markdown" in memo_response.json()
+
+
+def test_specialty_mismatch_demo_fixture_exercises_cms_and_nppes_cross_check():
+    client = TestClient(create_app())
+    fixture = json.loads((app_module.PROJECT_ROOT / "data" / "demo" / "specialty_mismatch_case.json").read_text())
+
+    create_response = client.post(
+        "/cases",
+        json={
+            "title": fixture["title"],
+            "tip_text": fixture["tip_text"],
+        },
+    )
+    case_id = create_response.json()["id"]
+    client.post(f"/cases/{case_id}/documents", json={"documents": fixture["documents"]})
+
+    response = client.post(f"/cases/{case_id}/analyze")
+
+    assert response.status_code == 200
+    payload = response.json()
+    reason_codes = {flag["reason_code"] for flag in payload["risk_flags"]}
+    assert "specialty_procedure_mismatch" in reason_codes
+    assert "abnormal_billing_percentile" in reason_codes
+    assert any(match["source_name"] == "NPPES" for match in payload["external_matches"])
+    assert payload["case"]["overall_risk_score"] >= 35
 
 
 def test_palantir_status_reports_not_configured_without_env(monkeypatch):

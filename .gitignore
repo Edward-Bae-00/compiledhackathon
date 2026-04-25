@@ -16,11 +16,13 @@ dist/
 build/
 coverage/
 .vite/
+data/.cache/
 
 # Logs and local environment
 *.log
 .env
 .env.*
+.secrets/
 .codex/
 storage/*.db
 

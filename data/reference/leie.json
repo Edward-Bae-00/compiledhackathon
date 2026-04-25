@@ -3,36 +3,80 @@
     "name": "Dr. Excluded Provider",
     "match_key": "dr. excluded provider",
     "entity_type": "individual",
-    "reason": "OIG exclusion in effect"
+    "reason": "OIG exclusion in effect",
+    "identity_policy": "synthetic_anonymized",
+    "source_dataset": "HHS OIG LEIE Downloadable Database"
   },
   {
     "name": "Apex Review Group",
     "match_key": "apex review group",
     "entity_type": "entity",
-    "reason": "Excluded billing contractor"
+    "reason": "Excluded billing contractor",
+    "identity_policy": "synthetic_anonymized",
+    "source_dataset": "HHS OIG LEIE Downloadable Database"
   },
   {
     "name": "BrightPath Billing LLC",
     "match_key": "brightpath billing llc",
     "entity_type": "entity",
-    "reason": "Excluded billing services organization"
+    "reason": "Excluded billing services organization",
+    "identity_policy": "synthetic_anonymized",
+    "source_dataset": "HHS OIG LEIE Downloadable Database"
   },
   {
     "name": "Dr. Suspended Lab Owner",
     "match_key": "dr. suspended lab owner",
     "entity_type": "individual",
-    "reason": "Program exclusion tied to laboratory kickback settlement"
+    "reason": "Program exclusion tied to laboratory kickback settlement",
+    "identity_policy": "synthetic_anonymized",
+    "source_dataset": "HHS OIG LEIE Downloadable Database"
   },
   {
     "name": "Metro DME Network",
     "match_key": "metro dme network",
     "entity_type": "entity",
-    "reason": "Excluded durable medical equipment supplier"
+    "reason": "Excluded durable medical equipment supplier",
+    "identity_policy": "synthetic_anonymized",
+    "source_dataset": "HHS OIG LEIE Downloadable Database"
   },
   {
     "name": "Northstar Referral Partners",
     "match_key": "northstar referral partners",
     "entity_type": "entity",
-    "reason": "Excluded referral management company"
+    "reason": "Excluded referral management company",
+    "identity_policy": "synthetic_anonymized",
+    "source_dataset": "HHS OIG LEIE Downloadable Database"
+  },
+  {
+    "name": "Sunrise Orthotics Network",
+    "match_key": "sunrise orthotics network",
+    "entity_type": "entity",
+    "reason": "Excluded orthotics supplier",
+    "identity_policy": "synthetic_anonymized",
+    "source_dataset": "HHS OIG LEIE Downloadable Database"
+  },
+  {
+    "name": "Cobalt Genetic Testing Lab",
+    "match_key": "cobalt genetic testing lab",
+    "entity_type": "entity",
+    "reason": "Excluded genetic testing laboratory",
+    "identity_policy": "synthetic_anonymized",
+    "source_dataset": "HHS OIG LEIE Downloadable Database"
+  },
+  {
+    "name": "Rivergate Transport Services",
+    "match_key": "rivergate transport services",
+    "entity_type": "entity",
+    "reason": "Excluded non-emergency transport supplier",
+    "identity_policy": "synthetic_anonymized",
+    "source_dataset": "HHS OIG LEIE Downloadable Database"
+  },
+  {
+    "name": "Wellpath Chronic Care Managers",
+    "match_key": "wellpath chronic care managers",
+    "entity_type": "entity",
+    "reason": "Excluded care-management services company",
+    "identity_policy": "synthetic_anonymized",
+    "source_dataset": "HHS OIG LEIE Downloadable Database"
   }
 ]

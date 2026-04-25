@@ -12,5 +12,7 @@
       "doc_type": "memo",
       "content": "Dr. Excluded Provider coordinated billing through Apex Review Group."
     }
-  ]
+  ],
+  "identity_policy": "synthetic_anonymized",
+  "source_pattern": "DOJ Health Care Fraud public releases"
 }

@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-04-25T00:10:00+00:00",
+  "anonymization_policy": "mixed_aggregate_cms_synthetic_named_entities",
+  "sources": {
+    "cms_provider_service": {
+      "name": "CMS Medicare Physician & Other Practitioners by Provider and Service",
+      "url": "https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data",
+      "landing_page": "https://data.cms.gov/provider-summary-by-type-of-service/medicare-physician-other-practitioners/medicare-physician-other-practitioners-by-provider-and-service",
+      "dataset_year": 2023,
+      "license": "https://www.usa.gov/government-works",
+      "usage": "Aggregate benchmark values only; provider identities are not committed."
+    },
+    "oig_leie": {
+      "name": "HHS OIG LEIE Downloadable Database",
+      "url": "https://www.oig.hhs.gov/exclusions/exclusions_list.asp",
+      "latest_csv": "https://oig.hhs.gov/exclusions/downloadables/UPDATED.csv",
+      "usage": "Exclusion categories and source semantics only; committed names are synthetic."
+    },
+    "nppes_npi": {
+      "name": "CMS NPPES NPI Downloadable Files",
+      "url": "https://download.cms.gov/nppes/NPI_Files.html",
+      "usage": "Taxonomy and registry semantics only; committed NPIs and names are synthetic."
+    },
+    "doj_health_care_fraud": {
+      "name": "DOJ Health Care Fraud public releases",
+      "url": "https://www.justice.gov/opa/pr/national-health-care-fraud-takedown-results-324-defendants-charged-connection-over-146",
+      "usage": "Narrative pattern inspiration only; committed case narratives are synthetic."
+    }
+  },
+  "generated_files": {
+    "cms_benchmarks.json": 3985,
+    "leie.json": 10,
+    "npi_registry.json": 11,
+    "clean_case.json": 1,
+    "specialty_mismatch_case.json": 1,
+    "suspicious_case.json": 1
+  },
+  "notes": [
+    "CMS benchmark rows keep aggregate public values and source metadata.",
+    "LEIE, NPPES, and demo identities are synthetic to avoid naming real providers in the MVP demo.",
+    "This is a deterministic testing fixture bundle, not an ML training corpus."
+  ]
+}

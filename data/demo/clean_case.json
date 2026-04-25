@@ -7,5 +7,7 @@
       "doc_type": "claim_summary",
       "content": "npi,procedure_code,service_date,amount,patient_count,provider_name\n1111222233,93000,2025-01-03,180,12,Dr. Clean Provider\n"
     }
-  ]
+  ],
+  "identity_policy": "synthetic_anonymized",
+  "source_pattern": "routine low-risk audit control"
 }

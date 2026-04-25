@@ -32,7 +32,7 @@ Success criteria: after reviewing the package, a fraud investigator or FCA lawye
 - **Legal elements checklist:** score readiness against FCA elements such as false claim, knowledge, materiality, government payment, damages, and source credibility.
 - **Records request and subpoena drafting:** generate next-step requests for claims data, ownership records, billing-company communications, and preservation letters.
 
-## Run the Local Demo
+## Run Everything
 
 Prerequisites:
 
@@ -40,7 +40,7 @@ Prerequisites:
 - Python with `uv`.
 - Optional: Palantir Foundry/AIP access and a bearer token.
 
-Install dependencies:
+Install dependencies once from the repo root:
 
 ```bash
 npm install
@@ -48,13 +48,15 @@ cd apps/api && uv sync --group dev
 cd ../..
 ```
 
-Start the backend in one terminal:
+### Run without Palantir
+
+Terminal 1:
 
 ```bash
 npm run dev:api
 ```
 
-Start the frontend in another terminal:
+Terminal 2:
 
 ```bash
 npm run dev:web
@@ -66,7 +68,7 @@ Open:
 http://localhost:3000
 ```
 
-API health check:
+Confirm the backend is running:
 
 ```bash
 curl http://127.0.0.1:8000/health
@@ -77,6 +79,60 @@ Expected response:
 ```json
 {"status":"ok"}
 ```
+
+### Run with Palantir
+
+Create a local secrets file. This path is ignored by Git:
+
+```bash
+mkdir -p apps/api/.secrets
+touch apps/api/.secrets/palantir.env
+```
+
+Add your Palantir values to `apps/api/.secrets/palantir.env`:
+
+```bash
+export PALANTIR_HOSTNAME="your-foundry-hostname.palantirfoundry.com"
+export PALANTIR_API_TOKEN="your-palantir-api-token"
+export PALANTIR_AIP_EXTRACT_FACTS_URL="https://<your-foundry-host>/<extract-function-run-endpoint>"
+export PALANTIR_AIP_ASSESS_RISK_URL="https://<your-foundry-host>/<risk-function-run-endpoint>"
+export PALANTIR_AIP_GENERATE_MEMO_URL="https://<your-foundry-host>/<memo-function-run-endpoint>"
+```
+
+Start the backend with those values loaded:
+
+```bash
+source apps/api/.secrets/palantir.env
+npm run dev:api
+```
+
+Start the frontend in another terminal:
+
+```bash
+npm run dev:web
+```
+
+Check whether the backend can reach Palantir:
+
+```bash
+curl http://127.0.0.1:8000/integrations/palantir/status
+```
+
+A healthy result should look like:
+
+```json
+{"configured":true,"reachable":true,"mode":"live"}
+```
+
+Then open `http://localhost:3000` and click `Analyze Case`. The UI status strip should show the FastAPI backend as connected and Palantir mode as `live`, `partial`, `configured`, or an error state.
+
+### How to find Palantir values
+
+- `PALANTIR_HOSTNAME`: open Foundry in your browser and copy the domain after `https://` and before the next `/`. Example: `my-company.palantirfoundry.com`.
+- `PALANTIR_API_TOKEN`: in Foundry, go to `Account` -> `Settings` -> `Tokens` -> `Create token`, then copy the generated token immediately.
+- `PALANTIR_AIP_*_URL`: create the three AIP Logic functions, then copy each runnable request URL from the function's Uses tab.
+
+Keep Palantir secrets only in `apps/api/.secrets/palantir.env` or in your backend host's secret manager. Do not put them in `apps/web`, do not prefix them with `NEXT_PUBLIC_`, and do not commit real tokens or `.env` files.
 
 Demo flow:
 
@@ -114,14 +170,14 @@ Official Palantir references:
 
 ## Configure Palantir AIP
 
-Create three AIP Logic functions in Palantir. Copy each function's runnable request URL from its Uses tab and export the URLs before starting the FastAPI backend.
+Create three AIP Logic functions in Palantir. Copy each function's runnable request URL from its Uses tab and store the URLs in `apps/api/.secrets/palantir.env` before starting the FastAPI backend.
 
 ```bash
 export PALANTIR_AIP_EXTRACT_FACTS_URL="https://<your-foundry-host>/<extract-function-run-endpoint>"
 export PALANTIR_AIP_ASSESS_RISK_URL="https://<your-foundry-host>/<risk-function-run-endpoint>"
 export PALANTIR_AIP_GENERATE_MEMO_URL="https://<your-foundry-host>/<memo-function-run-endpoint>"
 export PALANTIR_API_TOKEN="<your-token>"
-export PALANTIR_HOSTNAME="<your-foundry-host>" # optional status check
+export PALANTIR_HOSTNAME="<your-foundry-host>" # required for status checks
 ```
 
 Optional controls:
@@ -133,7 +189,7 @@ export PALANTIR_AIP_LOGIC_URL="https://<your-foundry-host>/<legacy-single-functi
 
 - `PALANTIR_FORCE_LOCAL=true` skips Palantir calls and returns local-only diagnostics.
 - `PALANTIR_AIP_LOGIC_URL` keeps legacy single-call recommendation mode available if you do not have staged functions yet.
-- Do not commit tokens or `.env` files.
+- Do not commit tokens, `.env` files, or files under `apps/api/.secrets/`.
 
 ## AIP Function Contracts
 

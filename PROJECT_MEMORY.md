@@ -23,7 +23,7 @@
 - The next Palantir upgrade should be stage-based and fallback-safe: extraction, risk assessment, and memo generation should be optional server-side AIP calls with local deterministic behavior preserved.
 - Foundry ontology persistence should be deferred until the tenant's ontology API names, action API names, query API names, and permissions are known.
 - Local-only comparison is available with `POST /cases/{case_id}/analyze?force_local=true` and the frontend `Local-only` toggle.
-- `README.md` now documents the live demo runbook, staged Palantir AIP environment variables, function request/response contracts, diagnostics fields, and Foundry ontology follow-up guidance.
+- `README.md` now documents the live demo runbook, local-only and Palantir run commands, ignored `apps/api/.secrets/palantir.env` setup, staged Palantir AIP environment variables, function request/response contracts, diagnostics fields, and Foundry ontology follow-up guidance.
 - To fit the YC government-fraud-hunters brief, the next product iteration should emphasize case-package construction for FCA/qui tam review rather than another general dashboard or isolated score.
 - The 2026-04-24 UI polish intentionally stayed frontend-only: no API, schema, scoring, Palantir, or package-builder behavior changed.
 - The 2026-04-25 UI rollback restored the pre-polish web experience from `cffa062` because the later command-center UI was not preferred; API, schema, scoring, and Palantir behavior stayed unchanged.
