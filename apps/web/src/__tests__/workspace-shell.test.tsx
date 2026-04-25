@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 
 import { CaseWorkspace } from "../components/case-workspace";
@@ -401,6 +401,108 @@ describe("HomePage", () => {
     const documentBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
     expect(documentBody.documents[0].filename).toBe("custom-claims.csv");
     expect(documentBody.documents[0].content).toContain("Dr. Custom");
+  });
+
+  it("formats an uploaded evidence file into claim summary CSV before submitting", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "case-upload",
+            title: "Custom Intake",
+            tip_text: "Uploaded tip",
+            status: "draft",
+            overall_risk_score: 0,
+            created_at: "2026-04-24T23:00:00Z"
+          })
+        )
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ documents: [] })))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            case: {
+              id: "case-upload",
+              title: "Custom Intake",
+              tip_text: "Uploaded tip",
+              status: "analyzed",
+              overall_risk_score: 62,
+              created_at: "2026-04-24T23:00:00Z"
+            },
+            documents: [
+              {
+                id: "doc-upload",
+                filename: "messy-claims.csv",
+                doc_type: "claim_summary",
+                preview: "upload preview"
+              }
+            ],
+            external_matches: [],
+            risk_flags: [
+              {
+                id: "flag-upload",
+                case_id: "case-upload",
+                severity: "high",
+                reason_code: "uploaded_claim",
+                score_delta: 25,
+                summary: "Uploaded evidence finding",
+                why_flagged: "Uploaded evidence reached the backend.",
+                external_validation: "Backend rule engine",
+                evidence_quotes: ["uploaded evidence"]
+              }
+            ],
+            timeline: [],
+            memo: {
+              id: "memo-upload",
+              case_id: "case-upload",
+              title: "Draft Investigator Memo",
+              body_markdown: "Uploaded memo body",
+              generated_at: "2026-04-24T23:00:00Z"
+            },
+            palantir_insight: {
+              provider: "Palantir AIP",
+              status: "not_configured",
+              recommendation: "Local deterministic findings remain available."
+            }
+          })
+        )
+      );
+
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /custom intake/i }));
+    fireEvent.change(screen.getByLabelText(/tip text/i), { target: { value: "Uploaded tip" } });
+    fireEvent.change(screen.getByLabelText(/evidence file/i), {
+      target: {
+        files: [
+          new File(
+            [
+              "Provider NPI,CPT,Date,Billed Amount,Patients,Provider\n" +
+                "1234567890,99214,01/01/2025,\"$5,000\",75,Dr. Uploaded Provider\n"
+            ],
+            "messy-claims.csv",
+            { type: "text/csv" }
+          )
+        ]
+      }
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/document content/i)).toHaveDisplayValue(
+        /1234567890,99214,2025-01-01,5000,75,Dr. Uploaded Provider/
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /analyze case/i }));
+
+    expect(await screen.findByText(/uploaded evidence finding/i)).toBeInTheDocument();
+    const documentBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    expect(documentBody.documents[0].filename).toBe("messy-claims.csv");
+    expect(documentBody.documents[0].doc_type).toBe("claim_summary");
+    expect(documentBody.documents[0].content).toContain(
+      "npi,procedure_code,service_date,amount,patient_count,provider_name\n1234567890,99214,2025-01-01,5000,75,Dr. Uploaded Provider"
+    );
   });
 
   it("sends local-only comparison mode to the analyze endpoint", async () => {

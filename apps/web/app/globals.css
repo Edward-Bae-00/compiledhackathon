@@ -204,6 +204,48 @@ textarea {
   width: 100%;
 }
 
+.intake-console input[type="file"] {
+  cursor: pointer;
+  padding: 9px 11px;
+}
+
+.file-upload-field {
+  max-width: 520px;
+}
+
+.file-status {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: -6px 0 0;
+}
+
+.uploaded-document-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: -4px 0 0;
+  padding: 0;
+}
+
+.uploaded-document-list li {
+  align-items: center;
+  background: rgba(52, 100, 162, 0.1);
+  border: 1px solid rgba(52, 100, 162, 0.18);
+  border-radius: 999px;
+  color: #2c5a94;
+  display: inline-flex;
+  font-size: 0.84rem;
+  font-weight: 700;
+  gap: 8px;
+  padding: 7px 10px;
+}
+
+.uploaded-document-list span {
+  color: var(--muted);
+}
+
 .intake-console input:disabled,
 .intake-console textarea:disabled {
   color: var(--muted);

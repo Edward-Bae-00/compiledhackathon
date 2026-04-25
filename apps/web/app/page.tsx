@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { type ChangeEvent, useMemo, useState, useTransition } from "react";
 
 import { CaseWorkspace, type WorkspaceCaseData } from "../src/components/case-workspace";
 
@@ -17,6 +17,315 @@ type IntakeRequest = {
   tipText: string;
   documents: IntakeDocument[];
 };
+
+const claimColumns = ["npi", "procedure_code", "service_date", "amount", "patient_count", "provider_name"] as const;
+
+type ClaimColumn = (typeof claimColumns)[number];
+type ClaimRow = Record<ClaimColumn, string>;
+
+const headerAliases: Record<string, ClaimColumn> = {
+  amount: "amount",
+  billed: "amount",
+  billed_amount: "amount",
+  billed_charge: "amount",
+  charge: "amount",
+  charges: "amount",
+  claim_amount: "amount",
+  cost: "amount",
+  cpt: "procedure_code",
+  cpt_code: "procedure_code",
+  date: "service_date",
+  doctor: "provider_name",
+  hcpcs: "procedure_code",
+  hcpcs_code: "procedure_code",
+  national_provider_identifier: "npi",
+  npi: "npi",
+  patient_count: "patient_count",
+  patient_volume: "patient_count",
+  patients: "patient_count",
+  physician: "provider_name",
+  procedure: "procedure_code",
+  procedure_code: "procedure_code",
+  provider: "provider_name",
+  provider_name: "provider_name",
+  provider_npi: "npi",
+  service_date: "service_date",
+  total_amount: "amount"
+};
+
+type FormattedEvidenceFile = {
+  document: IntakeDocument;
+  rowCount: number;
+};
+
+function emptyClaimRow(): ClaimRow {
+  return {
+    npi: "",
+    procedure_code: "",
+    service_date: "",
+    amount: "",
+    patient_count: "",
+    provider_name: ""
+  };
+}
+
+function stripBom(value: string): string {
+  return value.replace(/^\uFEFF/, "");
+}
+
+function slugHeader(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
+}
+
+function canonicalColumn(value: string): ClaimColumn | null {
+  return headerAliases[slugHeader(value)] ?? null;
+}
+
+function ensureCsvFilename(filename: string): string {
+  const safeName = filename.trim() || "uploaded-claims";
+  return safeName.replace(/\.[^.]+$/, "") + ".csv";
+}
+
+function normalizeMoney(value: string): string {
+  return value.replace(/[$,\s]/g, "");
+}
+
+function normalizeInteger(value: string): string {
+  const match = value.replace(/,/g, "").match(/\d+/);
+  return match?.[0] ?? "";
+}
+
+function normalizeDate(value: string): string {
+  const trimmed = value.trim();
+  const slashDate = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!slashDate) {
+    return trimmed;
+  }
+  const [, month, day, year] = slashDate;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
+function normalizeClaimRow(row: ClaimRow): ClaimRow {
+  return {
+    npi: row.npi.replace(/\D/g, "").slice(0, 10),
+    procedure_code: row.procedure_code.trim().toUpperCase(),
+    service_date: normalizeDate(row.service_date),
+    amount: normalizeMoney(row.amount),
+    patient_count: normalizeInteger(row.patient_count),
+    provider_name: row.provider_name.trim()
+  };
+}
+
+function hasClaimValue(row: ClaimRow): boolean {
+  return claimColumns.some((column) => row[column].trim().length > 0);
+}
+
+function parseDelimitedRows(content: string, delimiter: "," | "\t"): string[][] {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentCell = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const character = content[index];
+    const nextCharacter = content[index + 1];
+
+    if (character === "\"") {
+      if (inQuotes && nextCharacter === "\"") {
+        currentCell += "\"";
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (character === delimiter && !inQuotes) {
+      currentRow.push(currentCell);
+      currentCell = "";
+    } else if ((character === "\n" || character === "\r") && !inQuotes) {
+      if (character === "\r" && nextCharacter === "\n") {
+        index += 1;
+      }
+      currentRow.push(currentCell);
+      if (currentRow.some((cell) => cell.trim().length > 0)) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      currentCell = "";
+    } else {
+      currentCell += character;
+    }
+  }
+
+  currentRow.push(currentCell);
+  if (currentRow.some((cell) => cell.trim().length > 0)) {
+    rows.push(currentRow);
+  }
+
+  return rows;
+}
+
+function parseDelimitedClaims(content: string): ClaimRow[] {
+  const cleaned = stripBom(content);
+  const firstLine = cleaned.split(/\r?\n/, 1)[0] ?? "";
+  const delimiter: "," | "\t" = firstLine.includes("\t") ? "\t" : ",";
+  const rows = parseDelimitedRows(cleaned, delimiter);
+  const [headers, ...dataRows] = rows;
+  if (!headers) {
+    return [];
+  }
+
+  const mappedHeaders = headers.map((header) => canonicalColumn(header));
+  if (!mappedHeaders.some(Boolean)) {
+    return [];
+  }
+
+  return dataRows
+    .map((cells) => {
+      const claimRow = emptyClaimRow();
+      mappedHeaders.forEach((column, index) => {
+        if (column) {
+          claimRow[column] = cells[index]?.trim() ?? "";
+        }
+      });
+      return normalizeClaimRow(claimRow);
+    })
+    .filter(hasClaimValue);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function jsonRowsFromValue(value: unknown): unknown[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (!isRecord(value)) {
+    return [];
+  }
+
+  for (const key of ["claims", "rows", "records", "data"]) {
+    const nestedValue = value[key];
+    if (Array.isArray(nestedValue)) {
+      return nestedValue;
+    }
+  }
+
+  return [value];
+}
+
+function parseJsonClaims(content: string): ClaimRow[] {
+  try {
+    return jsonRowsFromValue(JSON.parse(stripBom(content)))
+      .filter(isRecord)
+      .map((record) => {
+        const claimRow = emptyClaimRow();
+        Object.entries(record).forEach(([key, value]) => {
+          const column = canonicalColumn(key);
+          if (column && value !== null && value !== undefined) {
+            claimRow[column] = String(value);
+          }
+        });
+        return normalizeClaimRow(claimRow);
+      })
+      .filter(hasClaimValue);
+  } catch {
+    return [];
+  }
+}
+
+function extractProviderName(text: string): string {
+  const labeledProvider = text.match(
+    /(?:provider|physician|doctor)\s*(?:name)?\s*[:#-]\s*([A-Z][A-Za-z.' -]{2,80})/i
+  );
+  if (labeledProvider?.[1]) {
+    return labeledProvider[1].trim();
+  }
+  const doctorName = text.match(/\bDr\.\s+[A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,4}/);
+  return doctorName?.[0].trim() ?? "";
+}
+
+function parsePlainTextClaim(text: string): ClaimRow {
+  const claimRow = emptyClaimRow();
+  const npi = text.match(/\b\d{10}\b/);
+  const procedure =
+    text.match(/(?:procedure|cpt|hcpcs)(?:\s*code)?\s*[:#-]?\s*([A-Z]?\d{4,5})/i) ??
+    text.match(/\b([A-Z]\d{4}|\d{5})\b/);
+  const serviceDate = text.match(/\b\d{4}-\d{2}-\d{2}\b/) ?? text.match(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/);
+  const labeledAmount = text.match(/(?:amount|billed|paid|charge|charges)\D{0,20}(\$?\s*\d[\d,]*(?:\.\d{1,2})?)/i);
+  const dollarAmount = text.match(/\$\s*\d[\d,]*(?:\.\d{1,2})?/);
+  const patientCount = text.match(/(\d[\d,]*)\s+patients?\b/i) ?? text.match(/patient[_\s-]*count\D{0,12}(\d[\d,]*)/i);
+
+  claimRow.npi = npi?.[0] ?? "";
+  claimRow.procedure_code = procedure?.[1] ?? "";
+  claimRow.service_date = serviceDate?.[0] ?? "";
+  claimRow.amount = labeledAmount?.[1] ?? dollarAmount?.[0] ?? "";
+  claimRow.patient_count = patientCount?.[1] ?? "";
+  claimRow.provider_name = extractProviderName(text);
+
+  return normalizeClaimRow(claimRow);
+}
+
+function parsePlainTextClaims(content: string): ClaimRow[] {
+  const candidateLines = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /(?:npi|provider|doctor|physician|procedure|cpt|hcpcs|billed|amount|patients?|\$\s*\d)/i.test(line));
+
+  const claims = (candidateLines.length > 0 ? candidateLines : [content])
+    .map(parsePlainTextClaim)
+    .filter(hasClaimValue);
+
+  return claims.length > 0 ? claims : [];
+}
+
+function csvEscape(value: string): string {
+  if (/[",\r\n]/.test(value)) {
+    return `"${value.replace(/"/g, "\"\"")}"`;
+  }
+  return value;
+}
+
+function toClaimSummaryCsv(rows: ClaimRow[]): string {
+  const header = claimColumns.join(",");
+  const body = rows.map((row) => claimColumns.map((column) => csvEscape(row[column])).join(","));
+  return [header, ...body].join("\n") + "\n";
+}
+
+function formatUploadedEvidence(filename: string, content: string): FormattedEvidenceFile {
+  const trimmedContent = stripBom(content).trim();
+  const parsedRows =
+    filename.toLowerCase().endsWith(".json") || trimmedContent.startsWith("{") || trimmedContent.startsWith("[")
+      ? parseJsonClaims(content)
+      : [];
+  const rows = parsedRows.length > 0 ? parsedRows : parseDelimitedClaims(content);
+  const fallbackRows = rows.length > 0 ? rows : parsePlainTextClaims(content);
+
+  return {
+    document: {
+      filename: ensureCsvFilename(filename),
+      doc_type: "claim_summary",
+      content: toClaimSummaryCsv(fallbackRows)
+    },
+    rowCount: fallbackRows.length
+  };
+}
+
+async function readUploadedFile(file: File): Promise<string> {
+  if (typeof file.text === "function") {
+    return file.text();
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result ?? "")));
+    reader.addEventListener("error", () => reject(reader.error ?? new Error("Unable to read file.")));
+    reader.readAsText(file);
+  });
+}
 
 const suspiciousPreset: IntakeRequest = {
   title: "Suspicious Provider Billing",
@@ -414,6 +723,7 @@ export default function HomePage() {
   const [customRequest, setCustomRequest] = useState<IntakeRequest>(customPreset);
   const [caseData, setCaseData] = useState<WorkspaceCaseData | null>(null);
   const [statusNote, setStatusNote] = useState<string | null>(null);
+  const [fileStatus, setFileStatus] = useState<string | null>(null);
   const [backendMode, setBackendMode] = useState("not checked");
   const [palantirMode, setPalantirMode] = useState("not checked");
   const [forceLocal, setForceLocal] = useState(false);
@@ -431,12 +741,10 @@ export default function HomePage() {
   const updateCustomDocument = (field: keyof IntakeDocument, value: string) => {
     setCustomRequest((current) => ({
       ...current,
-      documents: [
-        {
-          ...current.documents[0],
-          [field]: value
-        }
-      ]
+      documents:
+        current.documents.length > 0
+          ? current.documents.map((document, index) => (index === 0 ? { ...document, [field]: value } : document))
+          : [{ ...customPreset.documents[0], [field]: value }]
     }));
   };
 
@@ -444,6 +752,36 @@ export default function HomePage() {
     setIntakeMode(mode);
     setCaseData(null);
     setStatusNote(null);
+    setFileStatus(null);
+  };
+
+  const handleEvidenceFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) {
+      return;
+    }
+
+    try {
+      const formattedFiles = await Promise.all(
+        files.map(async (file) => formatUploadedEvidence(file.name, await readUploadedFile(file)))
+      );
+      const totalRows = formattedFiles.reduce((sum, file) => sum + file.rowCount, 0);
+      setCustomRequest((current) => ({
+        ...current,
+        documents: formattedFiles.map((file) => file.document)
+      }));
+      setFileStatus(
+        totalRows > 0
+          ? `Formatted ${files.length} file${files.length === 1 ? "" : "s"} into ${totalRows} claim row${
+              totalRows === 1 ? "" : "s"
+            }.`
+          : "No claim rows were found, so an empty claim summary template was created."
+      );
+    } catch {
+      setFileStatus("That file could not be read.");
+    } finally {
+      event.target.value = "";
+    }
   };
 
   const handleAnalyze = async () => {
@@ -506,7 +844,7 @@ export default function HomePage() {
             {isPending || isLoading ? "Analyzing..." : "Analyze Case"}
           </button>
           <span className="hero-hint">
-            Use a preset for the live walkthrough or switch to custom intake to paste evidence.
+            Use a preset for the live walkthrough or switch to custom intake to upload or paste evidence.
           </span>
         </div>
         {statusNote ? <p className="hero-hint">{statusNote}</p> : null}
@@ -539,6 +877,34 @@ export default function HomePage() {
             Custom Intake
           </button>
         </div>
+
+        <label className="file-upload-field">
+          Evidence File
+          <input
+            accept=".csv,.tsv,.txt,.json,text/csv,text/tab-separated-values,text/plain,application/json"
+            disabled={!isCustom}
+            multiple
+            onChange={(event) => {
+              void handleEvidenceFileUpload(event);
+            }}
+            type="file"
+          />
+        </label>
+        {fileStatus ? (
+          <p className="file-status" aria-live="polite">
+            {fileStatus}
+          </p>
+        ) : null}
+        {isCustom && customRequest.documents.length > 1 ? (
+          <ul className="uploaded-document-list" aria-label="Uploaded documents">
+            {customRequest.documents.map((document) => (
+              <li key={`${document.filename}-${document.content.length}`}>
+                <strong>{document.filename}</strong>
+                <span>{document.doc_type}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <div className="intake-grid">
           <label>
