@@ -1,0 +1,8 @@
+Provider: Dr. Excluded Provider
+NPI: 1234567890
+CPT code: 99214
+Service date: 2025-01-22
+Billed amount: $8,400
+Patient count: 96 patients
+
+Whistleblower note: billing volume appears unusually high compared with routine evaluation visits.

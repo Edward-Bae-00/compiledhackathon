@@ -19,9 +19,13 @@ type IntakeRequest = {
 };
 
 const claimColumns = ["npi", "procedure_code", "service_date", "amount", "patient_count", "provider_name"] as const;
+const compiledClaimColumns = [...claimColumns, "source_filename"] as const;
 
 type ClaimColumn = (typeof claimColumns)[number];
 type ClaimRow = Record<ClaimColumn, string>;
+type SourcedClaimRow = ClaimRow & {
+  source_filename: string;
+};
 
 const headerAliases: Record<string, ClaimColumn> = {
   amount: "amount",
@@ -54,8 +58,8 @@ const headerAliases: Record<string, ClaimColumn> = {
 };
 
 type FormattedEvidenceFile = {
-  document: IntakeDocument;
-  rowCount: number;
+  filename: string;
+  rows: ClaimRow[];
 };
 
 function emptyClaimRow(): ClaimRow {
@@ -83,11 +87,6 @@ function slugHeader(value: string): string {
 
 function canonicalColumn(value: string): ClaimColumn | null {
   return headerAliases[slugHeader(value)] ?? null;
-}
-
-function ensureCsvFilename(filename: string): string {
-  const safeName = filename.trim() || "uploaded-claims";
-  return safeName.replace(/\.[^.]+$/, "") + ".csv";
 }
 
 function normalizeMoney(value: string): string {
@@ -270,6 +269,11 @@ function parsePlainTextClaim(text: string): ClaimRow {
 }
 
 function parsePlainTextClaims(content: string): ClaimRow[] {
+  const documentClaim = parsePlainTextClaim(content);
+  if (hasClaimValue(documentClaim)) {
+    return [documentClaim];
+  }
+
   const candidateLines = content
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -289,12 +293,6 @@ function csvEscape(value: string): string {
   return value;
 }
 
-function toClaimSummaryCsv(rows: ClaimRow[]): string {
-  const header = claimColumns.join(",");
-  const body = rows.map((row) => claimColumns.map((column) => csvEscape(row[column])).join(","));
-  return [header, ...body].join("\n") + "\n";
-}
-
 function formatUploadedEvidence(filename: string, content: string): FormattedEvidenceFile {
   const trimmedContent = stripBom(content).trim();
   const parsedRows =
@@ -305,12 +303,32 @@ function formatUploadedEvidence(filename: string, content: string): FormattedEvi
   const fallbackRows = rows.length > 0 ? rows : parsePlainTextClaims(content);
 
   return {
+    filename,
+    rows: fallbackRows
+  };
+}
+
+function toCompiledClaimSummaryCsv(rows: SourcedClaimRow[]): string {
+  const header = compiledClaimColumns.join(",");
+  const body = rows.map((row) => compiledClaimColumns.map((column) => csvEscape(row[column])).join(","));
+  return [header, ...body].join("\n") + "\n";
+}
+
+function compileUploadedEvidence(files: FormattedEvidenceFile[]): { document: IntakeDocument; rowCount: number } {
+  const sourcedRows = files.flatMap((file) =>
+    file.rows.map((row) => ({
+      ...row,
+      source_filename: file.filename
+    }))
+  );
+
+  return {
     document: {
-      filename: ensureCsvFilename(filename),
+      filename: "compiled-claims.csv",
       doc_type: "claim_summary",
-      content: toClaimSummaryCsv(fallbackRows)
+      content: toCompiledClaimSummaryCsv(sourcedRows)
     },
-    rowCount: fallbackRows.length
+    rowCount: sourcedRows.length
   };
 }
 
@@ -579,6 +597,7 @@ type AnalyzeApiResponse = {
   memo: {
     title: string;
     body_markdown: string;
+    generated_at?: string;
     source?: string;
   };
   palantir_insight?: {
@@ -666,7 +685,8 @@ function mapApiCaseToWorkspace(payload: AnalyzeApiResponse): WorkspaceCaseData {
     memo: {
       title: payload.memo.title,
       body: payload.memo.body_markdown,
-      source: payload.memo.source ?? "Local Rule"
+      source: payload.memo.source ?? "Local Rule",
+      generatedAt: payload.memo.generated_at
     },
     externalMatches: payload.external_matches.map((match) => ({
       id: match.id,
@@ -724,6 +744,7 @@ export default function HomePage() {
   const [caseData, setCaseData] = useState<WorkspaceCaseData | null>(null);
   const [statusNote, setStatusNote] = useState<string | null>(null);
   const [fileStatus, setFileStatus] = useState<string | null>(null);
+  const [uploadedSources, setUploadedSources] = useState<string[]>([]);
   const [backendMode, setBackendMode] = useState("not checked");
   const [palantirMode, setPalantirMode] = useState("not checked");
   const [forceLocal, setForceLocal] = useState(false);
@@ -753,6 +774,7 @@ export default function HomePage() {
     setCaseData(null);
     setStatusNote(null);
     setFileStatus(null);
+    setUploadedSources([]);
   };
 
   const handleEvidenceFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -765,19 +787,21 @@ export default function HomePage() {
       const formattedFiles = await Promise.all(
         files.map(async (file) => formatUploadedEvidence(file.name, await readUploadedFile(file)))
       );
-      const totalRows = formattedFiles.reduce((sum, file) => sum + file.rowCount, 0);
+      const compiledEvidence = compileUploadedEvidence(formattedFiles);
       setCustomRequest((current) => ({
         ...current,
-        documents: formattedFiles.map((file) => file.document)
+        documents: [compiledEvidence.document]
       }));
+      setUploadedSources(formattedFiles.map((file) => file.filename));
       setFileStatus(
-        totalRows > 0
-          ? `Formatted ${files.length} file${files.length === 1 ? "" : "s"} into ${totalRows} claim row${
-              totalRows === 1 ? "" : "s"
+        compiledEvidence.rowCount > 0
+          ? `Compiled ${files.length} file${files.length === 1 ? "" : "s"} into ${compiledEvidence.rowCount} claim row${
+              compiledEvidence.rowCount === 1 ? "" : "s"
             }.`
           : "No claim rows were found, so an empty claim summary template was created."
       );
     } catch {
+      setUploadedSources([]);
       setFileStatus("That file could not be read.");
     } finally {
       event.target.value = "";
@@ -786,10 +810,11 @@ export default function HomePage() {
 
   const handleAnalyze = async () => {
     setIsLoading(true);
+    const sourceFilesForCase = intakeMode === "custom" ? uploadedSources : [];
     try {
       const apiCase = await analyzeViaApi(activeRequest, forceLocal);
       startTransition(() => {
-        setCaseData(apiCase);
+        setCaseData(sourceFilesForCase.length > 0 ? { ...apiCase, sourceFiles: sourceFilesForCase } : apiCase);
         setBackendMode("connected");
         setPalantirMode(apiCase.palantir?.mode ?? apiCase.palantirInsight?.status ?? "not returned");
         setStatusNote("Loaded from the local FastAPI backend.");
@@ -895,12 +920,12 @@ export default function HomePage() {
             {fileStatus}
           </p>
         ) : null}
-        {isCustom && customRequest.documents.length > 1 ? (
-          <ul className="uploaded-document-list" aria-label="Uploaded documents">
-            {customRequest.documents.map((document) => (
-              <li key={`${document.filename}-${document.content.length}`}>
-                <strong>{document.filename}</strong>
-                <span>{document.doc_type}</span>
+        {isCustom && uploadedSources.length > 0 ? (
+          <ul className="uploaded-document-list" aria-label="Source files">
+            {uploadedSources.map((source) => (
+              <li key={source}>
+                <strong>{source}</strong>
+                <span>source</span>
               </li>
             ))}
           </ul>

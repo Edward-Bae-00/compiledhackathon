@@ -1,3 +1,5 @@
+"use client";
+
 export type WorkspaceCaseData = {
   title: string;
   status: string;
@@ -7,6 +9,7 @@ export type WorkspaceCaseData = {
     filename: string;
     docType: string;
   }>;
+  sourceFiles?: string[];
   findings: Array<{
     id: string;
     severity: string;
@@ -42,6 +45,7 @@ export type WorkspaceCaseData = {
     title: string;
     body: string;
     source?: string;
+    generatedAt?: string;
   };
   externalMatches?: Array<{
     id: string;
@@ -76,6 +80,46 @@ function sourceBadge(source?: string): string {
   return source?.toLowerCase().includes("palantir") ? "AIP" : "Local";
 }
 
+function slugify(value: string): string {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "investigator-memo";
+}
+
+export function buildMemoMarkdown(caseData: WorkspaceCaseData): string {
+  const metadata = [
+    `Case: ${caseData.title}`,
+    `Status: ${caseData.status}`,
+    `Risk Score: ${caseData.overallRiskScore}`,
+    `Memo Source: ${caseData.memo.source ?? "Local Rule"}`
+  ];
+
+  if (caseData.memo.generatedAt) {
+    metadata.push(`Generated At: ${caseData.memo.generatedAt}`);
+  }
+
+  return [`# ${caseData.memo.title}`, "", ...metadata, "", caseData.memo.body.trim(), ""].join("\n");
+}
+
+export function memoDownloadFilename(caseData: WorkspaceCaseData): string {
+  return `${slugify(caseData.title)}-memo.md`;
+}
+
+function downloadMemo(caseData: WorkspaceCaseData) {
+  const blob = new Blob([buildMemoMarkdown(caseData)], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = memoDownloadFilename(caseData);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
   const nodeLabels = new Map(caseData.evidenceGraph?.nodes.map((node) => [node.id, node.label]) ?? []);
 
@@ -91,6 +135,7 @@ export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
           <span className="chip chip-score">Risk Score {caseData.overallRiskScore}</span>
           <span className="chip chip-status">{caseData.status}</span>
         </div>
+        <h4 className="case-list-heading">Documents</h4>
         <ul className="document-list">
           {caseData.documents.map((document) => (
             <li key={document.id}>
@@ -99,6 +144,19 @@ export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
             </li>
           ))}
         </ul>
+        {caseData.sourceFiles?.length ? (
+          <>
+            <h4 className="case-list-heading">Source files</h4>
+            <ul className="document-list">
+              {caseData.sourceFiles.map((filename) => (
+                <li key={filename}>
+                  <strong>{filename}</strong>
+                  <div className="muted">original upload</div>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
       </section>
 
       <section aria-label="Evidence Graph">
@@ -183,7 +241,12 @@ export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
         <p className="muted">
           Turn the rule-backed findings into a referral-ready narrative with citations an investigator can follow.
         </p>
-        <h3>{caseData.memo.title}</h3>
+        <div className="memo-header">
+          <h3>{caseData.memo.title}</h3>
+          <button className="memo-export-button" onClick={() => downloadMemo(caseData)} type="button">
+            Export Memo
+          </button>
+        </div>
         <div className="muted memo-source">Memo source: {caseData.memo.source ?? "Local Rule"}</div>
         <div className="memo-body">{caseData.memo.body}</div>
         {caseData.palantirInsight ? (

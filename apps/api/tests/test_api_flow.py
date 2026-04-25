@@ -62,6 +62,41 @@ def test_analysis_flow_returns_case_file_with_findings():
     assert "Set PALANTIR_AIP_LOGIC_URL" in payload["palantir_insight"]["recommendation"]
 
 
+def test_compiled_claim_summary_preserves_source_filename_in_timeline():
+    client = TestClient(create_app())
+
+    create_response = client.post(
+        "/cases",
+        json={
+            "title": "Compiled Upload Review",
+            "tip_text": "Uploaded evidence compiled from multiple files."
+        },
+    )
+    case_id = create_response.json()["id"]
+
+    client.post(
+        f"/cases/{case_id}/documents",
+        json={
+            "documents": [
+                {
+                    "filename": "compiled-claims.csv",
+                    "doc_type": "claim_summary",
+                    "content": (
+                        "npi,procedure_code,service_date,amount,patient_count,provider_name,source_filename\n"
+                        "1111222233,93000,2025-01-03,180,12,Dr. Clean Provider,clean-upload.csv\n"
+                    ),
+                }
+            ]
+        },
+    )
+
+    analyze_response = client.post(f"/cases/{case_id}/analyze")
+    assert analyze_response.status_code == 200
+    payload = analyze_response.json()
+
+    assert any(event["source"] == "clean-upload.csv" for event in payload["timeline"])
+
+
 def test_case_detail_endpoints_expose_analysis_outputs():
     client = TestClient(create_app())
 

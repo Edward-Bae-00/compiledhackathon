@@ -280,6 +280,14 @@ textarea {
   margin-top: 10px;
 }
 
+.case-list-heading {
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  margin: 18px 0 -6px;
+  text-transform: uppercase;
+}
+
 .chip {
   border-radius: 999px;
   padding: 6px 10px;
@@ -379,6 +387,34 @@ textarea {
 .finding-severity[data-severity="medium"] {
   background: rgba(52, 100, 162, 0.12);
   color: #2c5a94;
+}
+
+.memo-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.memo-header h3 {
+  margin-bottom: 0;
+}
+
+.memo-export-button {
+  background: var(--text);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: #fff8f1;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 9px 12px;
+}
+
+.memo-export-button:hover,
+.memo-export-button:focus-visible {
+  background: #26334d;
 }
 
 .memo-body {

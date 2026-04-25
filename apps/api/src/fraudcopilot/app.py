@@ -877,6 +877,9 @@ def parse_claim_rows(document: DocumentRecord) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     reader = csv.DictReader(document.content.splitlines())
     for row in reader:
+        row_source = (
+            row.get("source_filename") or row.get("source") or document.filename
+        ).strip() or document.filename
         rows.append(
             {
                 "id": str(uuid4()),
@@ -887,7 +890,7 @@ def parse_claim_rows(document: DocumentRecord) -> list[dict[str, Any]]:
                 "service_date": row.get("service_date", "").strip() or None,
                 "amount": float(row.get("amount", 0) or 0),
                 "patient_count": int(row.get("patient_count", 0) or 0),
-                "source": document.filename,
+                "source": row_source,
             }
         )
     return rows
@@ -1153,7 +1156,7 @@ def analyze_case(
                             f"${claim['amount']:.0f} across {claim['patient_count']} patients"
                         ),
                         date=claim["service_date"],
-                        source=document.filename,
+                        source=claim["source"],
                     )
                 )
         else:

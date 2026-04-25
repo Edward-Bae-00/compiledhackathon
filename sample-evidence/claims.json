@@ -1,0 +1,20 @@
+{
+  "claims": [
+    {
+      "provider_npi": "1234567890",
+      "procedure": "99214",
+      "service_date": "2025-01-15",
+      "claim_amount": "$7,250",
+      "patient_count": 90,
+      "doctor": "Dr. Excluded Provider"
+    },
+    {
+      "provider_npi": "1111222233",
+      "procedure": "93000",
+      "service_date": "2025-01-16",
+      "claim_amount": "$210",
+      "patient_count": 14,
+      "doctor": "Dr. Clean Provider"
+    }
+  ]
+}

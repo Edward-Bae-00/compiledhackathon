@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { vi } from "vitest";
 
-import { CaseWorkspace } from "../components/case-workspace";
+import { buildMemoMarkdown, CaseWorkspace, memoDownloadFilename } from "../components/case-workspace";
 import HomePage from "../../app/page";
 
 const caseData = {
@@ -11,6 +11,7 @@ const caseData = {
   documents: [
     { id: "doc-tip", filename: "tip-email.txt", docType: "tip" }
   ],
+  sourceFiles: ["raw-claims.csv", "tip-email.txt"],
   findings: [
     {
       id: "flag-1",
@@ -67,7 +68,8 @@ const caseData = {
   memo: {
     title: "Draft Investigator Memo",
     body: "A severe exclusion match and abnormal billing volume require escalation.",
-    source: "Palantir AIP"
+    source: "Palantir AIP",
+    generatedAt: "2026-04-24T23:00:00Z"
   },
   palantirInsight: {
     provider: "Palantir AIP",
@@ -111,6 +113,9 @@ describe("CaseWorkspace", () => {
     expect(screen.getByRole("heading", { name: /evidence graph/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /risk findings/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /memo generator/i })).toBeInTheDocument();
+    const intakePanel = screen.getByLabelText(/case intake/i);
+    expect(within(intakePanel).getByRole("heading", { name: /source files/i })).toBeInTheDocument();
+    expect(within(intakePanel).getByText(/raw-claims.csv/i)).toBeInTheDocument();
     expect(screen.getByText(/matched excluded entity in leie/i)).toBeInTheDocument();
     expect(screen.getByText(/internal memo references excluded contractor/i)).toBeInTheDocument();
     expect(screen.getByText(/prioritize investigator review/i)).toBeInTheDocument();
@@ -121,6 +126,46 @@ describe("CaseWorkspace", () => {
     expect(screen.getByRole("heading", { name: /palantir diagnostics/i })).toBeInTheDocument();
     expect(screen.getByText(/extract_case_facts/i)).toBeInTheDocument();
     expect(screen.getByText(/12 ms/i)).toBeInTheDocument();
+  });
+
+  it("downloads the generated memo as markdown", async () => {
+    const createObjectURL = vi.fn(() => "blob:memo-export");
+    const revokeObjectURL = vi.fn();
+    const createObjectURLDescriptor = Object.getOwnPropertyDescriptor(URL, "createObjectURL");
+    const revokeObjectURLDescriptor = Object.getOwnPropertyDescriptor(URL, "revokeObjectURL");
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURL });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectURL });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+    try {
+      render(<CaseWorkspace caseData={caseData} />);
+
+      expect(memoDownloadFilename(caseData)).toBe("demo-case-memo.md");
+      expect(buildMemoMarkdown(caseData)).toContain("Memo Source: Palantir AIP");
+      expect(buildMemoMarkdown(caseData)).toContain(
+        "A severe exclusion match and abnormal billing volume require escalation."
+      );
+      fireEvent.click(screen.getByRole("button", { name: /export memo/i }));
+
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      const blob = createObjectURL.mock.calls[0][0] as Blob;
+      expect(blob).toBeInstanceOf(Blob);
+      expect(blob.type).toBe("text/markdown;charset=utf-8");
+      expect(revokeObjectURL).toHaveBeenCalledWith("blob:memo-export");
+    } finally {
+      clickSpy.mockRestore();
+      if (createObjectURLDescriptor) {
+        Object.defineProperty(URL, "createObjectURL", createObjectURLDescriptor);
+      } else {
+        Reflect.deleteProperty(URL, "createObjectURL");
+      }
+      if (revokeObjectURLDescriptor) {
+        Object.defineProperty(URL, "revokeObjectURL", revokeObjectURLDescriptor);
+      } else {
+        Reflect.deleteProperty(URL, "revokeObjectURL");
+      }
+    }
   });
 });
 
@@ -403,7 +448,7 @@ describe("HomePage", () => {
     expect(documentBody.documents[0].content).toContain("Dr. Custom");
   });
 
-  it("formats an uploaded evidence file into claim summary CSV before submitting", async () => {
+  it("compiles uploaded evidence files into one sourced claim summary before submitting", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(
@@ -433,7 +478,7 @@ describe("HomePage", () => {
             documents: [
               {
                 id: "doc-upload",
-                filename: "messy-claims.csv",
+                filename: "compiled-claims.csv",
                 doc_type: "claim_summary",
                 preview: "upload preview"
               }
@@ -483,14 +528,35 @@ describe("HomePage", () => {
             ],
             "messy-claims.csv",
             { type: "text/csv" }
+          ),
+          new File(
+            [
+              JSON.stringify({
+                claims: [
+                  {
+                    provider_npi: "1111222233",
+                    procedure: "93000",
+                    service_date: "2025-01-03",
+                    claim_amount: "$180",
+                    patient_count: 12,
+                    doctor: "Dr. Clean Provider"
+                  }
+                ]
+              })
+            ],
+            "claims.json",
+            { type: "application/json" }
           )
         ]
       }
     });
 
     await waitFor(() => {
+      expect(screen.getByText(/compiled 2 files into 2 claim rows/i)).toBeInTheDocument();
+      expect(screen.getByText("messy-claims.csv")).toBeInTheDocument();
+      expect(screen.getByText("claims.json")).toBeInTheDocument();
       expect(screen.getByLabelText(/document content/i)).toHaveDisplayValue(
-        /1234567890,99214,2025-01-01,5000,75,Dr. Uploaded Provider/
+        /1234567890,99214,2025-01-01,5000,75,Dr. Uploaded Provider,messy-claims.csv/
       );
     });
 
@@ -498,11 +564,13 @@ describe("HomePage", () => {
 
     expect(await screen.findByText(/uploaded evidence finding/i)).toBeInTheDocument();
     const documentBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
-    expect(documentBody.documents[0].filename).toBe("messy-claims.csv");
+    expect(documentBody.documents).toHaveLength(1);
+    expect(documentBody.documents[0].filename).toBe("compiled-claims.csv");
     expect(documentBody.documents[0].doc_type).toBe("claim_summary");
     expect(documentBody.documents[0].content).toContain(
-      "npi,procedure_code,service_date,amount,patient_count,provider_name\n1234567890,99214,2025-01-01,5000,75,Dr. Uploaded Provider"
+      "npi,procedure_code,service_date,amount,patient_count,provider_name,source_filename\n1234567890,99214,2025-01-01,5000,75,Dr. Uploaded Provider,messy-claims.csv"
     );
+    expect(documentBody.documents[0].content).toContain("1111222233,93000,2025-01-03,180,12,Dr. Clean Provider,claims.json");
   });
 
   it("sends local-only comparison mode to the analyze endpoint", async () => {

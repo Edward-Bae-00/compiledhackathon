@@ -1,0 +1,3 @@
+Provider NPI,CPT,Date,Billed Amount,Patients,Provider
+1234567890,99214,01/01/2025,"$5,000",75,Dr. Excluded Provider
+1111222233,93000,01/03/2025,$180,12,Dr. Clean Provider
