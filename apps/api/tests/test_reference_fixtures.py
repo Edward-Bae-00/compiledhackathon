@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
+from urllib.error import URLError
 
+from fraudcopilot import reference_ingest
 from fraudcopilot.reference_ingest import build_reference_bundle
 
 
@@ -45,3 +47,52 @@ def test_committed_reference_fixtures_include_manifest_and_rule_coverage():
 
     assert all(entry["identity_policy"] == "synthetic_anonymized" for entry in leie)
     assert all(provider["identity_policy"] == "synthetic_anonymized" for provider in npi_registry.values())
+
+
+def test_source_sample_cache_records_download_failures_without_blocking_refresh(tmp_path, monkeypatch):
+    def raise_url_error(request, timeout):
+        raise URLError("certificate verification failed")
+
+    monkeypatch.setattr(reference_ingest, "urlopen", raise_url_error)
+
+    written = reference_ingest.cache_official_source_samples(tmp_path)
+
+    assert written == [tmp_path / "source_index.json"]
+    index = json.loads((tmp_path / "source_index.json").read_text())
+    assert set(index["errors"]) == set(reference_ingest.OFFICIAL_SOURCES)
+    assert "certificate verification failed" in index["errors"]["cms_provider_service"]
+
+
+def test_fixture_writer_preserves_existing_broad_cms_benchmark_rows(tmp_path):
+    reference_dir = tmp_path / "data" / "reference"
+    reference_dir.mkdir(parents=True)
+    existing_rows = [
+        {
+            "procedure_code": f"X{i:04d}",
+            "description": "Existing official aggregate row",
+            "allowed_taxonomies": [],
+            "p90_amount": 100,
+            "p90_patient_count": 20,
+        }
+        for i in range(20)
+    ]
+    existing_rows.append(
+        {
+            "procedure_code": "99214",
+            "description": "Older office visit aggregate",
+            "allowed_taxonomies": [],
+            "p90_amount": 1,
+            "p90_patient_count": 1,
+        }
+    )
+    (reference_dir / "cms_benchmarks.json").write_text(json.dumps(existing_rows) + "\n")
+
+    bundle = build_reference_bundle(generated_at="2026-04-25T00:00:00+00:00")
+    reference_ingest.write_reference_bundle(bundle, tmp_path)
+
+    merged_rows = json.loads((reference_dir / "cms_benchmarks.json").read_text())
+    manifest = json.loads((reference_dir / "source_manifest.json").read_text())
+    rows_by_code = {row["procedure_code"]: row for row in merged_rows}
+    assert rows_by_code["X0000"]["description"] == "Existing official aggregate row"
+    assert rows_by_code["99214"]["p90_amount"] == 450
+    assert manifest["generated_files"]["cms_benchmarks.json"] == len(merged_rows)

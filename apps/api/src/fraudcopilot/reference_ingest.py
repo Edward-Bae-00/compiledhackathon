@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
@@ -101,10 +102,18 @@ def write_reference_bundle(bundle: ReferenceBundle, project_root: Path = PROJECT
     demo_dir = project_root / "data" / "demo"
     reference_dir.mkdir(parents=True, exist_ok=True)
     demo_dir.mkdir(parents=True, exist_ok=True)
+    cms_benchmarks = _merge_existing_cms_benchmarks(reference_dir / "cms_benchmarks.json", bundle.cms_benchmarks)
+    manifest = {
+        **bundle.manifest,
+        "generated_files": {
+            **bundle.manifest["generated_files"],
+            "cms_benchmarks.json": len(cms_benchmarks),
+        },
+    }
 
     outputs = {
-        reference_dir / "source_manifest.json": bundle.manifest,
-        reference_dir / "cms_benchmarks.json": bundle.cms_benchmarks,
+        reference_dir / "source_manifest.json": manifest,
+        reference_dir / "cms_benchmarks.json": cms_benchmarks,
         reference_dir / "leie.json": bundle.leie,
         reference_dir / "npi_registry.json": bundle.npi_registry,
         **{demo_dir / filename: payload for filename, payload in bundle.demo_cases.items()},
@@ -116,27 +125,72 @@ def write_reference_bundle(bundle: ReferenceBundle, project_root: Path = PROJECT
     return written
 
 
+def _merge_existing_cms_benchmarks(path: Path, curated_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not path.exists():
+        return curated_rows
+    try:
+        existing_rows = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return curated_rows
+    if not isinstance(existing_rows, list) or len(existing_rows) <= len(curated_rows):
+        return curated_rows
+
+    by_code = {
+        row.get("procedure_code"): row
+        for row in existing_rows
+        if isinstance(row, dict) and isinstance(row.get("procedure_code"), str)
+    }
+    for row in curated_rows:
+        by_code[row["procedure_code"]] = row
+    return list(by_code.values())
+
+
 def cache_official_source_samples(cache_dir: Path = CACHE_DIR, timeout_seconds: float = 20) -> list[Path]:
     cache_dir.mkdir(parents=True, exist_ok=True)
     sample_urls = {
-        "cms_provider_service_sample.json": _cms_sample_url(),
-        "oig_leie_download_page.html": OFFICIAL_SOURCES["oig_leie"]["url"],
-        "nppes_npi_files_page.html": OFFICIAL_SOURCES["nppes_npi"]["url"],
-        "doj_health_care_fraud_release.html": OFFICIAL_SOURCES["doj_health_care_fraud"]["url"],
+        "cms_provider_service": ("cms_provider_service_sample.json", _cms_sample_url()),
+        "oig_leie": ("oig_leie_download_page.html", OFFICIAL_SOURCES["oig_leie"]["url"]),
+        "nppes_npi": ("nppes_npi_files_page.html", OFFICIAL_SOURCES["nppes_npi"]["url"]),
+        "doj_health_care_fraud": (
+            "doj_health_care_fraud_release.html",
+            OFFICIAL_SOURCES["doj_health_care_fraud"]["url"],
+        ),
     }
     written: list[Path] = []
-    for filename, url in sample_urls.items():
+    errors: dict[str, str] = {}
+    for source_key, (filename, url) in sample_urls.items():
         request = Request(url, headers={"User-Agent": "fraudcopilot-fixture-refresh/0.1"})
-        with urlopen(request, timeout=timeout_seconds) as response:
-            payload = response.read()
+        try:
+            with urlopen(request, timeout=timeout_seconds) as response:
+                payload = response.read()
+        except (HTTPError, URLError, TimeoutError, OSError) as exc:
+            errors[source_key] = _download_error_summary(exc)
+            continue
         output = cache_dir / filename
         output.write_bytes(payload)
         written.append(output)
-    (cache_dir / "source_index.json").write_text(
-        json.dumps({"sources": OFFICIAL_SOURCES, "cached_at": datetime.now(UTC).isoformat()}, indent=2) + "\n"
+    index_path = cache_dir / "source_index.json"
+    index_path.write_text(
+        json.dumps(
+            {
+                "sources": OFFICIAL_SOURCES,
+                "cached_at": datetime.now(UTC).isoformat(),
+                "errors": errors,
+            },
+            indent=2,
+        )
+        + "\n"
     )
-    written.append(cache_dir / "source_index.json")
+    written.append(index_path)
     return written
+
+
+def _download_error_summary(exc: BaseException) -> str:
+    if isinstance(exc, HTTPError):
+        return f"HTTP {exc.code}"
+    if isinstance(exc, URLError):
+        return str(exc.reason)
+    return str(exc)
 
 
 def _cms_sample_url() -> str:
