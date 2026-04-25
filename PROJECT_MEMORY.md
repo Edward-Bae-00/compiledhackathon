@@ -5,7 +5,7 @@
 
 ## Current State
 - Repo now contains a greenfield monorepo for the Fraud Investigator Copilot hackathon MVP.
-- `apps/api` is a FastAPI backend with SQLite-backed local persistence, seeded healthcare reference data, deterministic rule scoring, memo generation, local-demo CORS, and optional Palantir AIP Logic enrichment.
+- `apps/api` is a FastAPI backend with SQLite-backed local persistence, seeded healthcare reference data, CMS-derived HCPCS benchmark scoring, memo generation, local-demo CORS, and optional Palantir AIP Logic enrichment.
 - `apps/api` now supports staged Palantir AIP Logic enrichment for extraction, risk assessment, and memo generation, plus legacy single-insight mode and `force_local` analysis mode.
 - `apps/web` is a Next.js app-router frontend with the pre-polish demo UI restored, suspicious/clean/custom intake modes, a local-only toggle, graph/finding/memo Palantir badges, diagnostics, and fallback behavior when the local backend is unavailable.
 - `packages/shared/contracts/case-file.schema.json` holds the current shared case-file contract artifact, including graph and Palantir diagnostics response fields.
@@ -50,6 +50,7 @@
 - `next dev` under Node.js `v25.9.0` needs `NODE_OPTIONS=--no-webstorage` in this environment to avoid a broken server-side `localStorage` global.
 - Backend storage is intentionally simple and uses a single SQLite connection per app instance; concurrency and production hardening are out of scope for the hackathon.
 - Reference datasets are small seeded slices rather than full public datasets, so anomaly detection is illustrative rather than statistically complete.
+- `data/reference/cms_benchmarks.json` is now generated from the 2023 CMS provider-service CSV with `scripts/build_cms_benchmarks.py`; do not commit the 2.9GB raw CSV.
 - Palantir live mode still requires the user to create tenant-specific AIP Logic functions matching the documented contracts and provide endpoint URLs/tokens through environment variables.
 - Foundry ontology persistence and async webhook/SSE enrichment remain intentionally deferred.
 - The complaint-ready package builder is documented as a next requirement only; no package API, export endpoint, or UI panel exists yet.

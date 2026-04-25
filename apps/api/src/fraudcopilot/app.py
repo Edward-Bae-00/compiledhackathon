@@ -1088,6 +1088,26 @@ def build_local_memo(
     )
 
 
+def cms_benchmark_label(benchmark: dict[str, Any]) -> str:
+    return str(benchmark.get("source") or "Seeded CMS benchmark slice")
+
+
+def cms_amount_label(benchmark: dict[str, Any]) -> str:
+    basis = benchmark.get("amount_basis")
+    if basis == "Avg_Sbmtd_Chrg":
+        return "submitted charge"
+    if basis == "Avg_Mdcr_Alowd_Amt":
+        return "Medicare allowed amount"
+    return "amount"
+
+
+def cms_amount_alert_threshold(benchmark: dict[str, Any]) -> float:
+    amount = float(benchmark["p90_amount"])
+    if benchmark.get("amount_basis") == "Avg_Sbmtd_Chrg":
+        return amount * 2
+    return amount
+
+
 def analyze_case(
     case: CaseRecord,
     documents: list[DocumentRecord],
@@ -1261,9 +1281,9 @@ def analyze_case(
             )
 
         benchmark = references.cms_benchmarks.get(claim["procedure_code"])
-        if benchmark and (
-            claim["amount"] > benchmark["p90_amount"] or claim["patient_count"] > benchmark["p90_patient_count"]
-        ):
+        amount_alert_threshold = cms_amount_alert_threshold(benchmark) if benchmark else 0
+        if benchmark and (claim["amount"] > amount_alert_threshold or claim["patient_count"] > benchmark["p90_patient_count"]):
+            amount_label = cms_amount_label(benchmark)
             risk_flags.append(
                 RiskFlag(
                     id=str(uuid4()),
@@ -1271,15 +1291,19 @@ def analyze_case(
                     severity="high",
                     reason_code="abnormal_billing_percentile",
                     score_delta=20,
-                    summary=f"Billing for {claim['procedure_code']} exceeds the seeded CMS benchmark",
+                    summary=f"Billing for {claim['procedure_code']} exceeds the CMS benchmark",
                     why_flagged=(
                         f"Observed amount ${claim['amount']:.0f} and patient count {claim['patient_count']} "
-                        f"exceed the 90th percentile reference."
+                        "exceed a CMS-derived alert threshold."
                     ),
-                    external_validation="Seeded CMS benchmark slice",
+                    external_validation=cms_benchmark_label(benchmark),
                     evidence_quotes=[
                         f"{claim['provider_name']} {claim['procedure_code']} ${claim['amount']:.0f}",
-                        f"P90 amount ${benchmark['p90_amount']:.0f}, P90 patient count {benchmark['p90_patient_count']}",
+                        (
+                            f"P90 {amount_label} ${benchmark['p90_amount']:.0f}, "
+                            f"amount alert threshold ${amount_alert_threshold:.0f}, "
+                            f"P90 patient count {benchmark['p90_patient_count']}"
+                        ),
                     ],
                 )
             )
@@ -1307,7 +1331,8 @@ def analyze_case(
                 )
             )
 
-        if benchmark and npi_match and npi_match["taxonomy_code"] not in benchmark["allowed_taxonomies"]:
+        allowed_taxonomies = benchmark.get("allowed_taxonomies", []) if benchmark else []
+        if benchmark and allowed_taxonomies and npi_match and npi_match["taxonomy_code"] not in allowed_taxonomies:
             risk_flags.append(
                 RiskFlag(
                     id=str(uuid4()),

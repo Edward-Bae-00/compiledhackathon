@@ -86,7 +86,8 @@ def test_case_detail_endpoints_expose_analysis_outputs():
             ]
         },
     )
-    client.post(f"/cases/{case_id}/analyze")
+    analysis_response = client.post(f"/cases/{case_id}/analyze")
+    analysis_payload = analysis_response.json()
 
     case_response = client.get(f"/cases/{case_id}")
     findings_response = client.get(f"/cases/{case_id}/findings")
@@ -98,6 +99,11 @@ def test_case_detail_endpoints_expose_analysis_outputs():
     assert timeline_response.status_code == 200
     assert memo_response.status_code == 200
     assert case_response.json()["title"] == "Clean Provider Review"
+    assert analysis_payload["case"]["overall_risk_score"] == 0
+    assert not any(
+        flag["reason_code"] == "abnormal_billing_percentile"
+        for flag in analysis_payload["risk_flags"]
+    )
     assert isinstance(findings_response.json()["risk_flags"], list)
     assert isinstance(timeline_response.json()["timeline"], list)
     assert "body_markdown" in memo_response.json()

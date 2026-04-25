@@ -330,3 +330,20 @@ Expected current verification:
 - Web tests: `7 passed`
 - API tests: `8 passed`
 - Next.js production build: compiles successfully
+
+## CMS Benchmark Import
+
+The full CMS provider-service CSV is too large to commit or load at runtime. Keep the raw file outside the repo and
+generate the compact benchmark artifact used by the API:
+
+```bash
+python3 scripts/build_cms_benchmarks.py \
+  "/Users/daffawarsa/Downloads/Medicare Physician & Other Practitioners - by Provider and Service/2023/MUP_PHY_R25_P05_V20_D23_Prov_Svc.csv" \
+  --output data/reference/cms_benchmarks.json
+```
+
+Then rerun:
+
+```bash
+npm run test:api
+```
