@@ -13,6 +13,7 @@
 - The next documented product requirement is a complaint-ready FCA/qui tam case package builder that turns analyzed evidence into theory of liability, allegation-evidence map, exhibit index, damages estimate, export packet, and open follow-up questions.
 - `.codex/skills/ui-ux-pro-max/` was installed with `uipro init --ai codex` for Codex UI/UX Pro Max guidance.
 - Public-data fixture refresh support now lives in `apps/api/src/fraudcopilot/reference_ingest.py`; it maintains anonymized LEIE/NPPES/demo fixtures, preserves the broad official CMS benchmark slice, and writes source provenance to `data/reference/source_manifest.json`.
+- `README.md` documents how to download/cache the official CMS, OIG LEIE, NPPES, and DOJ source data under ignored `data/.cache/official/` so another developer can rebuild the compact fixtures.
 
 ## Durable Decisions
 - The MVP is intentionally healthcare-specific, local-first, and single-user.

@@ -389,6 +389,8 @@ Expected current verification:
 
 ## Public Reference Fixtures
 
+Committed reference files are curated fixtures, not raw public-data mirrors. The demo keeps official aggregate CMS benchmark values and source provenance, but provider names, NPIs, LEIE entities, and demo narratives are synthetic/anonymized. Source metadata is tracked in `data/reference/source_manifest.json`.
+
 Refresh the curated LEIE/NPPES/demo fixtures and source manifest:
 
 ```bash
@@ -401,17 +403,50 @@ To also cache small official source samples under ignored `data/.cache/official/
 npm run refresh:fixtures -- --download-source-samples
 ```
 
-The full CMS provider-service CSV is too large to commit or load at runtime. Keep the raw file outside the repo and generate the compact benchmark artifact used by the API:
+The source-sample command downloads small CMS, NPPES, and DOJ samples when reachable. If the local Python certificate store rejects one of the official sites, the command still writes fixtures and records the download error in `data/.cache/official/source_index.json`.
 
+### Rebuild From Official Public Data
+
+Create a local cache for raw public data. This folder is ignored by Git:
+
+```bash
+mkdir -p data/.cache/official
+```
+
+Download the CMS 2023 Provider and Service CSV used to rebuild `data/reference/cms_benchmarks.json`:
+
+```bash
+curl -L \
+  "https://data.cms.gov/sites/default/files/2025-04/e3f823f8-db5b-4cc7-ba04-e7ae92b99757/MUP_PHY_R25_P05_V20_D23_Prov_Svc.csv" \
+  -o "data/.cache/official/MUP_PHY_R25_P05_V20_D23_Prov_Svc.csv"
+```
+
+Then regenerate the compact CMS benchmark artifact:
 
 ```bash
 python3 scripts/build_cms_benchmarks.py \
-  "/Users/daffawarsa/Downloads/Medicare Physician & Other Practitioners - by Provider and Service/2023/MUP_PHY_R25_P05_V20_D23_Prov_Svc.csv" \
+  "data/.cache/official/MUP_PHY_R25_P05_V20_D23_Prov_Svc.csv" \
   --output data/reference/cms_benchmarks.json
 ```
 
-Then rerun:
+Download or inspect the other official sources used for fixture provenance:
 
 ```bash
+curl -L "https://oig.hhs.gov/exclusions/downloadables/UPDATED.csv" \
+  -o "data/.cache/official/oig-leie-updated.csv"
+
+curl -L "https://download.cms.gov/nppes/NPI_Files.html" \
+  -o "data/.cache/official/nppes-npi-files.html"
+
+curl -L "https://www.justice.gov/opa/pr/national-health-care-fraud-takedown-results-324-defendants-charged-connection-over-146" \
+  -o "data/.cache/official/doj-health-care-fraud-release.html"
+```
+
+For the full NPPES dataset, open `https://download.cms.gov/nppes/NPI_Files.html` and download the current full replacement monthly NPI ZIP into `data/.cache/official/`. The current fixture generator does not commit or parse the full NPPES file; it uses NPPES source semantics and synthetic provider identities so the MVP demo remains anonymized.
+
+After downloading/rebuilding, refresh the curated anonymized fixtures and run verification:
+
+```bash
+npm run refresh:fixtures
 npm run test:api
 ```
