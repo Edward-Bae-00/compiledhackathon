@@ -1,13 +1,13 @@
 # Project Memory
 
 ## Last Updated
-2026-04-24
+2026-04-25
 
 ## Current State
 - Repo now contains a greenfield monorepo for the Fraud Investigator Copilot hackathon MVP.
 - `apps/api` is a FastAPI backend with SQLite-backed local persistence, seeded healthcare reference data, deterministic rule scoring, memo generation, local-demo CORS, and optional Palantir AIP Logic enrichment.
 - `apps/api` now supports staged Palantir AIP Logic enrichment for extraction, risk assessment, and memo generation, plus legacy single-insight mode and `force_local` analysis mode.
-- `apps/web` is a Next.js app-router frontend with a polished live-demo command center, suspicious/clean/custom intake modes, a local-only toggle, case summary metrics, graph/finding/memo Palantir badges, diagnostics, clean-case empty state, and fallback behavior when the local backend is unavailable.
+- `apps/web` is a Next.js app-router frontend with the pre-polish demo UI restored, suspicious/clean/custom intake modes, a local-only toggle, graph/finding/memo Palantir badges, diagnostics, and fallback behavior when the local backend is unavailable.
 - `packages/shared/contracts/case-file.schema.json` holds the current shared case-file contract artifact, including graph and Palantir diagnostics response fields.
 - `tasks/` now reflects the 2026-04-24 planning state and includes a prioritized product-improvement backlog.
 - The next documented product requirement is a complaint-ready FCA/qui tam case package builder that turns analyzed evidence into theory of liability, allegation-evidence map, exhibit index, damages estimate, export packet, and open follow-up questions.
@@ -26,6 +26,7 @@
 - `README.md` now documents the live demo runbook, staged Palantir AIP environment variables, function request/response contracts, diagnostics fields, and Foundry ontology follow-up guidance.
 - To fit the YC government-fraud-hunters brief, the next product iteration should emphasize case-package construction for FCA/qui tam review rather than another general dashboard or isolated score.
 - The 2026-04-24 UI polish intentionally stayed frontend-only: no API, schema, scoring, Palantir, or package-builder behavior changed.
+- The 2026-04-25 UI rollback restored the pre-polish web experience from `cffa062` because the later command-center UI was not preferred; API, schema, scoring, and Palantir behavior stayed unchanged.
 
 ## Verification Evidence
 - Root tests pass with `npm run test`.
@@ -39,6 +40,7 @@
 - Live smoke on 2026-04-24: backend `GET /health` returned `{"status":"ok"}` and frontend `GET /` returned HTTP `200`.
 - After Phase 9 documentation updates, `git diff --check` reports no whitespace errors and the changed README/task sections were reviewed.
 - After Phase 10 live-demo UI polish, focused frontend tests report `8 passed`, root `npm run test` reports web `8 passed` and API `8 passed`, and `npm run build:web` completes successfully.
+- After restoring the pre-polish UI, `npm run test:web` reports `7 passed`, `npm run build:web` completes successfully, root `npm test` reports web `7 passed` and API `8 passed`, and `git diff --check` reports no whitespace errors.
 - `rtk uipro init --ai codex` completed successfully after sandbox escalation; it generated `.codex/skills/ui-ux-pro-max/`.
 
 ## Known Risks

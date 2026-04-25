@@ -76,59 +76,19 @@ function sourceBadge(source?: string): string {
   return source?.toLowerCase().includes("palantir") ? "AIP" : "Local";
 }
 
-function pluralize(count: number, singular: string): string {
-  return `${count} ${singular}${count === 1 ? "" : "s"}`;
-}
-
 export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
   const nodeLabels = new Map(caseData.evidenceGraph?.nodes.map((node) => [node.id, node.label]) ?? []);
-  const graphNodeCount = caseData.evidenceGraph?.nodes.length ?? 0;
-  const graphEdgeCount = caseData.evidenceGraph?.edges.length ?? 0;
-  const palantirMode = caseData.palantir?.mode ?? caseData.palantirInsight?.status ?? "not returned";
 
   return (
-    <div className="workspace-shell">
-      <section className="case-summary" aria-label="Case Summary">
-        <div>
-          <div className="section-kicker">Case Summary</div>
-          <h2>{caseData.title}</h2>
-          <p className="muted">
-            A single demo-ready view of intake status, graph coverage, risk findings, and memo provenance.
-          </p>
-        </div>
-        <div className="summary-metrics" aria-label="Case metrics">
-          <div className="metric-card">
-            <span>Risk score</span>
-            <strong>{caseData.overallRiskScore}/100</strong>
-          </div>
-          <div className="metric-card">
-            <span>Evidence packet</span>
-            <strong>{pluralize(caseData.documents.length, "document")}</strong>
-          </div>
-          <div className="metric-card">
-            <span>Findings</span>
-            <strong>{pluralize(caseData.findings.length, "finding")}</strong>
-          </div>
-          <div className="metric-card">
-            <span>Palantir mode</span>
-            <strong>{palantirMode}</strong>
-          </div>
-        </div>
-      </section>
-
-      <div className="workspace-grid">
+    <div className="workspace-grid">
       <section aria-label="Case Intake">
-        <div className="section-heading">
-          <div>
-            <div className="section-kicker">Step 1</div>
-            <h2>Case Intake</h2>
-          </div>
-          <p className="muted">
-            Preserve the starter record and source documents the analysis used.
-          </p>
-        </div>
+        <h2>Case Intake</h2>
+        <p className="muted">
+          Upload documents, paste the whistleblower tip, and preserve the structured starter record for the case.
+        </p>
+        <h3>{caseData.title}</h3>
         <div className="case-meta">
-          <span className="chip chip-score">Score {caseData.overallRiskScore}/100</span>
+          <span className="chip chip-score">Risk Score {caseData.overallRiskScore}</span>
           <span className="chip chip-status">{caseData.status}</span>
         </div>
         <ul className="document-list">
@@ -142,15 +102,10 @@ export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
       </section>
 
       <section aria-label="Evidence Graph">
-        <div className="section-heading">
-          <div>
-            <div className="section-kicker">{graphNodeCount} nodes / {graphEdgeCount} links</div>
-            <h2>Evidence Graph</h2>
-          </div>
-          <p className="muted">
-            Connect providers, procedure codes, and supporting documents into a scan-friendly timeline.
-          </p>
-        </div>
+        <h2>Evidence Graph</h2>
+        <p className="muted">
+          Connect providers, procedure codes, and supporting documents into a timeline an investigator can scan quickly.
+        </p>
         {caseData.evidenceGraph?.nodes.length ? (
           <div className="network-graph" aria-label="Entity relationship graph">
             <div className="graph-node-list">
@@ -167,7 +122,7 @@ export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
                 <li key={edge.id}>
                   <div className="edge-row">
                     <strong>{nodeLabels.get(edge.source) ?? edge.source}</strong>
-                    <span className="relationship-label">{edge.relationship}</span>
+                    <span>{edge.relationship}</span>
                     <strong>{nodeLabels.get(edge.target) ?? edge.target}</strong>
                     <span className="chip chip-source">{sourceBadge(edge.sourceType)}</span>
                   </div>
@@ -177,7 +132,6 @@ export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
             </ul>
           </div>
         ) : null}
-        <div className="list-label">Timeline</div>
         <ul className="timeline-list">
           {caseData.timeline.map((event) => (
             <li key={event.id}>
@@ -192,41 +146,27 @@ export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
       </section>
 
       <section aria-label="Risk Findings">
-        <div className="section-heading">
-          <div>
-            <div className="section-kicker">Risk review</div>
-            <h2>Risk Findings</h2>
-          </div>
-          <p className="muted">
-            Rule-backed signals stay ahead of memo drafting so every suspicion remains anchored to evidence.
-          </p>
-        </div>
-        {caseData.findings.length ? (
-          <ul className="finding-list">
-            {caseData.findings.map((finding) => (
-              <li key={finding.id}>
-                <div className="finding-heading">
-                  <span className="chip finding-severity" data-severity={finding.severity}>
-                    {finding.severity}
-                  </span>
-                  <span className="chip chip-source">{sourceBadge(finding.source)}</span>
-                </div>
-                <strong>{finding.summary}</strong>
-                <p>{finding.whyFlagged}</p>
-                <div className="muted">Validation: {finding.externalValidation}</div>
-                <div className="muted">Evidence: {finding.evidenceQuotes.join(" | ")}</div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="empty-state">
-            <strong>No risk findings detected</strong>
-            <p className="muted">This packet is ready for routine documentation and standard reviewer signoff.</p>
-          </div>
-        )}
+        <h2>Risk Findings</h2>
+        <p className="muted">
+          Rule-backed signals stay ahead of memo drafting so every suspicion stays anchored to evidence.
+        </p>
+        <ul className="finding-list">
+          {caseData.findings.map((finding) => (
+            <li key={finding.id}>
+              <div className="finding-heading">
+                <span className="chip finding-severity" data-severity={finding.severity}>
+                  {finding.severity}
+                </span>
+                <span className="chip chip-source">{sourceBadge(finding.source)}</span>
+              </div>
+              <strong>{finding.summary}</strong>
+              <p>{finding.whyFlagged}</p>
+              <div className="muted">Validation: {finding.externalValidation}</div>
+              <div className="muted">Evidence: {finding.evidenceQuotes.join(" | ")}</div>
+            </li>
+          ))}
+        </ul>
         {caseData.externalMatches?.length ? (
-          <>
-          <div className="list-label">External validation</div>
           <ul className="validation-list">
             {caseData.externalMatches.map((match) => (
               <li key={match.id}>
@@ -235,20 +175,14 @@ export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
               </li>
             ))}
           </ul>
-          </>
         ) : null}
       </section>
 
       <section aria-label="Memo Generator">
-        <div className="section-heading">
-          <div>
-            <div className="section-kicker">Referral draft</div>
-            <h2>Memo Generator</h2>
-          </div>
-          <p className="muted">
-            Turn the findings into a referral-ready narrative with provenance an investigator can follow.
-          </p>
-        </div>
+        <h2>Memo Generator</h2>
+        <p className="muted">
+          Turn the rule-backed findings into a referral-ready narrative with citations an investigator can follow.
+        </p>
         <h3>{caseData.memo.title}</h3>
         <div className="muted memo-source">Memo source: {caseData.memo.source ?? "Local Rule"}</div>
         <div className="memo-body">{caseData.memo.body}</div>
@@ -292,7 +226,6 @@ export function CaseWorkspace({ caseData }: CaseWorkspaceProps) {
           </div>
         ) : null}
       </section>
-      </div>
     </div>
   );
 }

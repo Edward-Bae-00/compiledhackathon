@@ -473,62 +473,46 @@ export default function HomePage() {
 
   return (
     <main className="page-shell">
-      <section className="demo-header" aria-labelledby="demo-title">
-        <div className="demo-copy">
-          <div className="eyebrow">Live Demo Command Center</div>
-          <h1 id="demo-title">Fraud Investigator Copilot</h1>
-          <p>
-            Turn messy evidence into a structured case file, surface public-data matches, show Palantir AIP
-            provenance, and draft an investigator memo from one reliable demo workflow.
-          </p>
-          <div className="hero-actions">
-            <button
-              className="hero-button"
-              disabled={isPending || isLoading}
-              onClick={() => {
-                void handleAnalyze();
-              }}
-              type="button"
-            >
-              {isPending || isLoading ? "Analyzing..." : "Analyze Case"}
-            </button>
-            <span className="hero-hint">Use a preset for the walkthrough or paste evidence in custom intake.</span>
-          </div>
-          {statusNote ? (
-            <p className="status-note" role="status">
-              {statusNote}
-            </p>
-          ) : null}
-        </div>
-
-        <aside className="demo-status-card" aria-label="Demo status">
-          <div className="status-card-heading">Demo readiness</div>
-          <div className="status-strip">
-            <span>FastAPI: {backendMode}</span>
-            <span>Palantir AIP: {palantirMode}</span>
-            <span>Case Source: {formatModeLabel(intakeMode)}</span>
-          </div>
+      <section className="hero">
+        <div className="eyebrow">Healthcare Fraud Triage</div>
+        <h1>Fraud Investigator Copilot</h1>
+        <p>
+          Drop in messy evidence, get back a structured case file. This MVP organizes the intake story,
+          highlights public-data matches, surfaces rule-backed risk findings, adds optional Palantir AIP
+          triage, and drafts an investigator memo.
+        </p>
+        <div className="status-strip" aria-label="Demo status">
+          <span>FastAPI: {backendMode}</span>
+          <span>Palantir AIP: {palantirMode}</span>
+          <span>Case Source: {formatModeLabel(intakeMode)}</span>
           <label className="toggle-chip">
             <input
               checked={forceLocal}
               onChange={(event) => setForceLocal(event.target.checked)}
               type="checkbox"
             />
-            Local-only comparison
+            Local-only
           </label>
-        </aside>
+        </div>
+        <div className="hero-actions">
+          <button
+            className="hero-button"
+            disabled={isPending || isLoading}
+            onClick={() => {
+              void handleAnalyze();
+            }}
+            type="button"
+          >
+            {isPending || isLoading ? "Analyzing..." : "Analyze Case"}
+          </button>
+          <span className="hero-hint">
+            Use a preset for the live walkthrough or switch to custom intake to paste evidence.
+          </span>
+        </div>
+        {statusNote ? <p className="hero-hint">{statusNote}</p> : null}
       </section>
 
       <section className="intake-console" aria-label="Evidence Intake">
-        <div className="section-heading">
-          <div>
-            <div className="section-kicker">Choose demo packet</div>
-            <h2>Evidence Intake</h2>
-          </div>
-          <p className="muted">
-            Presets keep the live walkthrough fast. Custom mode lets you paste a fresh tip and document text.
-          </p>
-        </div>
         <div className="preset-controls" role="group" aria-label="Case source">
           <button
             aria-pressed={intakeMode === "suspicious"}
