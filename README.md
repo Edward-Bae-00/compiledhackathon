@@ -384,13 +384,25 @@ npm run build:web
 Expected current verification:
 
 - Web tests: `7 passed`
-- API tests: `8 passed`
+- API tests: `13 passed`
 - Next.js production build: compiles successfully
 
-## CMS Benchmark Import
+## Public Reference Fixtures
 
-The full CMS provider-service CSV is too large to commit or load at runtime. Keep the raw file outside the repo and
-generate the compact benchmark artifact used by the API:
+Refresh the curated LEIE/NPPES/demo fixtures and source manifest:
+
+```bash
+npm run refresh:fixtures
+```
+
+To also cache small official source samples under ignored `data/.cache/official/`:
+
+```bash
+npm run refresh:fixtures -- --download-source-samples
+```
+
+The full CMS provider-service CSV is too large to commit or load at runtime. Keep the raw file outside the repo and generate the compact benchmark artifact used by the API:
+
 
 ```bash
 python3 scripts/build_cms_benchmarks.py \

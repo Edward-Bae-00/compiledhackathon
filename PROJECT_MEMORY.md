@@ -12,10 +12,13 @@
 - `tasks/` now reflects the 2026-04-24 planning state and includes a prioritized product-improvement backlog.
 - The next documented product requirement is a complaint-ready FCA/qui tam case package builder that turns analyzed evidence into theory of liability, allegation-evidence map, exhibit index, damages estimate, export packet, and open follow-up questions.
 - `.codex/skills/ui-ux-pro-max/` was installed with `uipro init --ai codex` for Codex UI/UX Pro Max guidance.
+- Public-data fixture refresh support now lives in `apps/api/src/fraudcopilot/reference_ingest.py`; it maintains anonymized LEIE/NPPES/demo fixtures, preserves the broad official CMS benchmark slice, and writes source provenance to `data/reference/source_manifest.json`.
 
 ## Durable Decisions
 - The MVP is intentionally healthcare-specific, local-first, and single-user.
 - Public-data credibility comes from seeded LEIE, NPI, and CMS benchmark slices rather than broad live runtime dependencies.
+- For committed data fixtures, use the mixed public-data policy: keep official aggregate CMS benchmark values/provenance, but use synthetic/anonymized provider names, NPIs, LEIE entities, and demo narratives.
+- Official source samples belong under ignored `data/.cache/official/`; cache download failures are recorded in `source_index.json` and must not block deterministic fixture generation.
 - Risk scoring is deterministic and rule-backed; memo generation is a formatting layer over those findings.
 - The web demo should remain usable even when the backend is unavailable, so seeded fallback behavior is intentional rather than a temporary hack.
 - Generated dependencies and build artifacts are intentionally excluded from Git; `node_modules/`, Next.js `.next/`, and Python bytecode caches should be regenerated locally rather than committed.
@@ -42,6 +45,7 @@
 - After Phase 10 live-demo UI polish, focused frontend tests report `8 passed`, root `npm run test` reports web `8 passed` and API `8 passed`, and `npm run build:web` completes successfully.
 - After restoring the pre-polish UI, `npm run test:web` reports `7 passed`, `npm run build:web` completes successfully, root `npm test` reports web `7 passed` and API `8 passed`, and `git diff --check` reports no whitespace errors.
 - `rtk uipro init --ai codex` completed successfully after sandbox escalation; it generated `.codex/skills/ui-ux-pro-max/`.
+- After public-data fixture refresh hardening, `npm run test` reports web `7 passed` and API `13 passed`; `npm run build:web` completes successfully; `git diff --check` reports no whitespace errors.
 
 ## Known Risks
 - Custom intake currently supports pasted text/CSV content in a single document field; multi-file upload and OCR are still out of scope.
@@ -50,6 +54,7 @@
 - `next dev` under Node.js `v25.9.0` needs `NODE_OPTIONS=--no-webstorage` in this environment to avoid a broken server-side `localStorage` global.
 - Backend storage is intentionally simple and uses a single SQLite connection per app instance; concurrency and production hardening are out of scope for the hackathon.
 - Reference datasets are small seeded slices rather than full public datasets, so anomaly detection is illustrative rather than statistically complete.
+- Python `urllib` source caching hit a local certificate-chain failure against the OIG LEIE page; the refresh command records this in ignored cache metadata and still writes deterministic fixtures. Full LEIE ingestion may need local CA configuration or a curl-backed fetch path.
 - `data/reference/cms_benchmarks.json` is now generated from the 2023 CMS provider-service CSV with `scripts/build_cms_benchmarks.py`; do not commit the 2.9GB raw CSV.
 - Palantir live mode still requires the user to create tenant-specific AIP Logic functions matching the documented contracts and provide endpoint URLs/tokens through environment variables.
 - Foundry ontology persistence and async webhook/SSE enrichment remain intentionally deferred.
@@ -59,5 +64,6 @@
 - If the next step is product improvement, design the complaint-ready package contract first, then add citation-grade evidence links with source offsets because package export depends on proof traceability.
 - If the next step is demo polish, run through the README live-demo script with the actual Palantir AIP endpoint configured.
 - If the next step is backend credibility, add optional live NPPES lookup with seeded fallback, more CMS benchmark rows, procedure-specialty mismatch cases, and evidence-link persistence detail.
+- If the next step is data credibility, extend `reference_ingest.py` from sample caching into true source normalization for LEIE/NPPES/CMS while keeping committed identity fixtures anonymized.
 - If the next step is YC RFS alignment, follow the documented backlog: complaint-ready packages first, then corporate structure/control tracing, PDF/OCR intake, legal-elements checklist, and records-request drafting.
 - If deployment is needed, add environment-driven API base URL docs and a small runbook for starting both apps locally.
