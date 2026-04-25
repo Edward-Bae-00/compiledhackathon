@@ -9,7 +9,7 @@
     "dev:api": "cd apps/api && .venv/bin/python -m uvicorn --app-dir src fraudcopilot.app:app --reload",
     "build:web": "npm run build --workspace apps/web",
     "dev": "npm run dev:web",
-    "dev:web": "NODE_OPTIONS=--no-webstorage npm run dev --workspace apps/web",
+    "dev:web": "npm run dev --workspace apps/web",
     "refresh:fixtures": "cd apps/api && PYTHONPATH=src .venv/bin/python -m fraudcopilot.reference_ingest",
     "lint:web": "npm run lint --workspace apps/web",
     "test": "npm run test:web && npm run test:api",
