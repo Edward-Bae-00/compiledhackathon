@@ -276,8 +276,9 @@ def test_palantir_aip_logic_response_enriches_analysis(monkeypatch):
     assert insight["provider"] == "Palantir AIP"
     assert "expedited investigator review" in insight["recommendation"]
     assert calls[0]["authorization"] == "Bearer test-token"
-    assert calls[0]["payload"]["case"]["title"] == "Suspicious Provider Billing"
-    assert calls[0]["payload"]["risk_flags"]
+    inner = json.loads(calls[0]["payload"]["parameters"]["caseFileJson"])
+    assert inner["case"]["title"] == "Suspicious Provider Billing"
+    assert inner["risk_flags"]
 
 
 def test_staged_palantir_pipeline_extracts_risk_memo_and_graph(monkeypatch):

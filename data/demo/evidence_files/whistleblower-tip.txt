@@ -1,0 +1,11 @@
+Synthetic whistleblower tip
+
+Received: 2025-01-18
+Reporter: Former billing coordinator, identity withheld for demo
+
+I worked on the January billing batch for Dr. Excluded Provider. The batch did not look like normal family medicine billing. Dr. Excluded Provider NPI 1234567890 billed 99214 for $7200 across 110 patients on the January run. A second batch listed Dr. Excluded Provider NPI 1234567890 billed 99490 for $9800 across 120 patients.
+
+The work queue notes repeatedly mentioned Apex Review Group and BrightPath Billing LLC. Staff were told to keep chronic care management claims moving even when the chart only had a short outreach note. I also saw a referral spreadsheet from Northstar Referral Partners with patient names highlighted for follow-up billing.
+
+I am concerned that an excluded provider and excluded billing entities are still controlling claims submitted to federal health programs.
+

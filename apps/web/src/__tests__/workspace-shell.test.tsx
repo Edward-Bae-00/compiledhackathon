@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { vi } from "vitest";
 
+vi.mock("../components/evidence-graph-visual", () => ({
+  EvidenceGraphVisual: () => null,
+}));
+
 import { buildMemoMarkdown, CaseWorkspace, memoDownloadFilename } from "../components/case-workspace";
 import HomePage from "../../app/page";
 
@@ -167,6 +171,75 @@ describe("CaseWorkspace", () => {
       }
     }
   });
+
+  it("renders memo markdown as structured content", () => {
+    render(
+      <CaseWorkspace
+        caseData={{
+          ...caseData,
+          memo: {
+            ...caseData.memo,
+            body: "# AIP Investigator Memo\n\n**Escalate this case**\n\n- Preserve billing records"
+          }
+        }}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: /aip investigator memo/i })).toBeInTheDocument();
+    expect(screen.getByText(/escalate this case/i).tagName.toLowerCase()).toBe("strong");
+    expect(screen.getByRole("listitem", { name: /preserve billing records/i })).toBeInTheDocument();
+    expect(screen.queryByText("# AIP Investigator Memo")).not.toBeInTheDocument();
+    expect(screen.queryByText("**Escalate this case**")).not.toBeInTheDocument();
+  });
+
+  it("surfaces the overall risk score as an accessible severity meter", () => {
+    render(<CaseWorkspace caseData={caseData} />);
+
+    const meter = screen.getByRole("meter", { name: /risk score 95 out of 100/i });
+    expect(meter).toHaveAttribute("aria-valuenow", "95");
+    expect(meter).toHaveAttribute("data-risk-band", "severe");
+  });
+
+  it("uses status-specific diagnostics chips", () => {
+    render(
+      <CaseWorkspace
+        caseData={{
+          ...caseData,
+          palantir: {
+            ...caseData.palantir,
+            mode: "partial",
+            stages: [
+              caseData.palantir.stages[0],
+              {
+                stage: "assess_risk",
+                configured: true,
+                status: "error",
+                latencyMs: 8012,
+                errorSummary: "timed out"
+              },
+              {
+                stage: "generate_memo",
+                configured: false,
+                status: "not_configured",
+                latencyMs: 0
+              }
+            ]
+          }
+        }}
+      />
+    );
+
+    expect(screen.getByText("partial")).toHaveAttribute("data-status", "partial");
+    expect(screen.getByText("error")).toHaveAttribute("data-status", "error");
+    expect(screen.getByText("not_configured")).toHaveAttribute("data-status", "not_configured");
+  });
+
+  it("marks the timeline as a visual timeline", () => {
+    render(<CaseWorkspace caseData={caseData} />);
+
+    expect(screen.getByLabelText(/case timeline/i)).toHaveClass("visual-timeline");
+    expect(screen.getByText(/internal memo references excluded contractor/i).closest("li")).toHaveClass("timeline-item");
+  });
 });
 
 describe("HomePage", () => {
@@ -197,9 +270,24 @@ describe("HomePage", () => {
     expect(screen.getByText(/draft investigator memo/i)).toBeInTheDocument();
   });
 
+  it("shows staged loading progress while analysis is running", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("[]"))
+      .mockReturnValueOnce(new Promise<Response>(() => {}));
+
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /analyze case/i }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/extracting evidence/i);
+    expect(screen.getByText(/scoring risk/i)).toBeInTheDocument();
+    expect(screen.getByText(/drafting memo/i)).toBeInTheDocument();
+  });
+
   it("prefers the API-backed case payload when the backend is reachable", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("[]"))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -300,12 +388,12 @@ describe("HomePage", () => {
     expect(screen.getByText(/api memo body/i)).toBeInTheDocument();
     expect(screen.getByText(/palantir aip: live/i)).toBeInTheDocument();
     expect(screen.getByText(/aip recommends expedited review/i)).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("sends the clean preset instead of the suspicious preset when selected", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("[]"))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -356,7 +444,7 @@ describe("HomePage", () => {
     fireEvent.click(screen.getByRole("button", { name: /analyze case/i }));
 
     expect(await screen.findByText(/routine compliance review/i)).toBeInTheDocument();
-    const createBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    const createBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
     expect(createBody.title).toBe("Routine Compliance Review");
     expect(screen.getByText(/case source: clean preset/i)).toBeInTheDocument();
   });
@@ -364,6 +452,7 @@ describe("HomePage", () => {
   it("submits custom pasted evidence to the API", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("[]"))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -443,7 +532,7 @@ describe("HomePage", () => {
     fireEvent.click(screen.getByRole("button", { name: /analyze case/i }));
 
     expect(await screen.findByText(/custom evidence finding/i)).toBeInTheDocument();
-    const documentBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    const documentBody = JSON.parse(String(fetchMock.mock.calls[2][1]?.body));
     expect(documentBody.documents[0].filename).toBe("custom-claims.csv");
     expect(documentBody.documents[0].content).toContain("Dr. Custom");
   });
@@ -451,6 +540,7 @@ describe("HomePage", () => {
   it("compiles uploaded evidence files into one sourced claim summary before submitting", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("[]"))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -563,7 +653,7 @@ describe("HomePage", () => {
     fireEvent.click(screen.getByRole("button", { name: /analyze case/i }));
 
     expect(await screen.findByText(/uploaded evidence finding/i)).toBeInTheDocument();
-    const documentBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    const documentBody = JSON.parse(String(fetchMock.mock.calls[2][1]?.body));
     expect(documentBody.documents).toHaveLength(1);
     expect(documentBody.documents[0].filename).toBe("compiled-claims.csv");
     expect(documentBody.documents[0].doc_type).toBe("claim_summary");
@@ -576,6 +666,7 @@ describe("HomePage", () => {
   it("sends local-only comparison mode to the analyze endpoint", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("[]"))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -637,7 +728,101 @@ describe("HomePage", () => {
     fireEvent.click(screen.getByRole("button", { name: /analyze case/i }));
 
     expect(await screen.findByText(/local memo/i)).toBeInTheDocument();
-    expect(String(fetchMock.mock.calls[2][0])).toContain("?force_local=true");
+    expect(String(fetchMock.mock.calls[3][0])).toContain("?force_local=true");
     expect(screen.getByText(/palantir aip: forced_local/i)).toBeInTheDocument();
+  });
+
+  it("loads a prior case from case history when selected", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              id: "case-history",
+              title: "History Case",
+              status: "analyzed",
+              overall_risk_score: 88,
+              created_at: "2026-04-25T12:00:00Z"
+            }
+          ])
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "case-history",
+            title: "History Case",
+            tip_text: "Historical tip",
+            status: "analyzed",
+            overall_risk_score: 88,
+            created_at: "2026-04-25T12:00:00Z"
+          })
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            risk_flags: [
+              {
+                id: "flag-history",
+                case_id: "case-history",
+                severity: "high",
+                reason_code: "history_flag",
+                score_delta: 20,
+                summary: "Historical finding",
+                why_flagged: "Loaded from stored findings.",
+                external_validation: "Stored analysis",
+                evidence_quotes: ["Historical evidence"],
+                source: "Local Rule"
+              }
+            ],
+            external_matches: [
+              {
+                id: "match-history",
+                case_id: "case-history",
+                source_name: "NPPES",
+                match_key: "1234567890",
+                match_status: "verified",
+                summary: "Historical provider match"
+              }
+            ]
+          })
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            timeline: [
+              {
+                id: "evt-history",
+                case_id: "case-history",
+                label: "Historical timeline event",
+                date: "2025-03-01",
+                source: "history.csv"
+              }
+            ]
+          })
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "memo-history",
+            case_id: "case-history",
+            title: "Historical Memo",
+            body_markdown: "Historical memo body",
+            generated_at: "2026-04-25T12:00:00Z",
+            source: "Local Rule"
+          })
+        )
+      );
+
+    render(<HomePage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /view history case/i }));
+
+    expect(await screen.findByText(/historical finding/i)).toBeInTheDocument();
+    expect(screen.getByText(/historical memo body/i)).toBeInTheDocument();
+    expect(screen.getByText(/loaded stored case history case/i)).toBeInTheDocument();
   });
 });

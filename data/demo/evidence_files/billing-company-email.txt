@@ -1,0 +1,15 @@
+From: operations@brightpath-demo.invalid
+To: billing-team@apex-review-demo.invalid
+Date: 2025-01-17
+Subject: January claim push
+
+Team,
+
+Please keep the Dr. Excluded Provider batch on the expedited review lane. Apex Review Group should finish the claim edits today so BrightPath Billing LLC can send the final file to the clearinghouse queue.
+
+For the chronic care management rows, do not remove a 99490 entry only because the supporting note is short. Flag those rows for reviewer follow-up after submission. Northstar Referral Partners expects the January outreach list to be reflected in the billing file.
+
+Reminder: keep the internal review comments outside the exported claim file.
+
+Demo note: this message is synthetic/anonymized and exists only to support the live demo.
+

@@ -1,10 +1,10 @@
 "use client";
 
-import { type ChangeEvent, useMemo, useState, useTransition } from "react";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import { CaseWorkspace, type WorkspaceCaseData } from "../src/components/case-workspace";
 
-type IntakeMode = "suspicious" | "clean" | "custom";
+type IntakeMode = "suspicious" | "clean" | "specialty_mismatch" | "custom";
 
 type IntakeDocument = {
   filename: string;
@@ -60,6 +60,8 @@ const headerAliases: Record<string, ClaimColumn> = {
 type FormattedEvidenceFile = {
   filename: string;
   rows: ClaimRow[];
+  recognizedColumns: string[];
+  ignoredColumns: string[];
 };
 
 function emptyClaimRow(): ClaimRow {
@@ -293,18 +295,39 @@ function csvEscape(value: string): string {
   return value;
 }
 
+function extractColumnDiagnostics(content: string): { recognized: string[]; ignored: string[] } {
+  const cleaned = stripBom(content).trim();
+  const firstLine = cleaned.split(/\r?\n/, 1)[0] ?? "";
+  const delimiter: "," | "\t" = firstLine.includes("\t") ? "\t" : ",";
+  const rawHeaders = firstLine.split(delimiter).map((h) => h.replace(/^["']|["']$/g, "").trim());
+  const recognized: string[] = [];
+  const ignored: string[] = [];
+  for (const h of rawHeaders) {
+    if (!h) continue;
+    if (canonicalColumn(h)) {
+      recognized.push(h);
+    } else {
+      ignored.push(h);
+    }
+  }
+  return { recognized, ignored };
+}
+
 function formatUploadedEvidence(filename: string, content: string): FormattedEvidenceFile {
   const trimmedContent = stripBom(content).trim();
-  const parsedRows =
-    filename.toLowerCase().endsWith(".json") || trimmedContent.startsWith("{") || trimmedContent.startsWith("[")
-      ? parseJsonClaims(content)
-      : [];
+  const isJson =
+    filename.toLowerCase().endsWith(".json") || trimmedContent.startsWith("{") || trimmedContent.startsWith("[");
+  const parsedRows = isJson ? parseJsonClaims(content) : [];
   const rows = parsedRows.length > 0 ? parsedRows : parseDelimitedClaims(content);
   const fallbackRows = rows.length > 0 ? rows : parsePlainTextClaims(content);
 
+  const diag = isJson ? { recognized: [], ignored: [] } : extractColumnDiagnostics(content);
+
   return {
     filename,
-    rows: fallbackRows
+    rows: fallbackRows,
+    recognizedColumns: diag.recognized,
+    ignoredColumns: diag.ignored
   };
 }
 
@@ -372,6 +395,19 @@ const cleanPreset: IntakeRequest = {
       doc_type: "claim_summary",
       content:
         "npi,procedure_code,service_date,amount,patient_count,provider_name\n1111222233,93000,2025-01-03,180,12,Dr. Clean Provider\n"
+    }
+  ]
+};
+
+const specialtyMismatchPreset: IntakeRequest = {
+  title: "Specialty Procedure Mismatch Review",
+  tipText: "Auditor asks why a family medicine provider is billing a high-complexity genetic test.",
+  documents: [
+    {
+      filename: "genetic-testing-claims.csv",
+      doc_type: "claim_summary",
+      content:
+        "npi,procedure_code,service_date,amount,patient_count,provider_name\n1111222233,81225,2025-02-11,6800,44,Dr. Clean Provider\n"
     }
   ]
 };
@@ -547,6 +583,84 @@ const seededCleanCase: WorkspaceCaseData = {
   }
 };
 
+const seededSpecialtyMismatchCase: WorkspaceCaseData = {
+  title: "Specialty Procedure Mismatch Review",
+  status: "analyzed",
+  overallRiskScore: 47,
+  documents: [{ id: "doc-sm-1", filename: "genetic-testing-claims.csv", docType: "claim_summary" }],
+  findings: [
+    {
+      id: "flag-sm-1",
+      severity: "medium",
+      summary: "Specialty-procedure mismatch for 81225",
+      whyFlagged: "Provider taxonomy 207Q00000X (Family Medicine) is not in the allowed list for CPT 81225 (genetic test).",
+      externalValidation: "NPPES taxonomy + CMS benchmark allowed_taxonomies",
+      evidenceQuotes: ["NPI 1111222233 taxonomy 207Q00000X", "CPT 81225 requires 291U00000X or 207SG0201X"],
+      source: "Local Rule"
+    },
+    {
+      id: "flag-sm-2",
+      severity: "high",
+      summary: "Billing for 81225 exceeds the seeded CMS benchmark",
+      whyFlagged: "Observed amount $6800 exceeds p90 threshold of $3200.",
+      externalValidation: "Seeded CMS benchmark slice",
+      evidenceQuotes: ["$6800 billed for 81225", "44 patients"],
+      source: "Local Rule"
+    }
+  ],
+  evidenceGraph: {
+    nodes: [
+      { id: "entity:dr_clean_provider", label: "Dr. Clean Provider", type: "provider", source: "Local Rule" },
+      { id: "procedure:81225", label: "81225", type: "procedure", source: "CMS Benchmark" }
+    ],
+    edges: [
+      {
+        id: "edge-sm-1",
+        source: "entity:dr_clean_provider",
+        target: "procedure:81225",
+        relationship: "billed",
+        evidence: "Dr. Clean Provider billed 81225 for $6800.",
+        sourceType: "Local Rule"
+      }
+    ]
+  },
+  timeline: [
+    {
+      id: "evt-sm-1",
+      label: "Dr. Clean Provider billed 81225 for $6800 across 44 patients",
+      date: "2025-02-11",
+      source: "genetic-testing-claims.csv"
+    }
+  ],
+  memo: {
+    title: "Draft Investigator Memo",
+    body:
+      "The case scored 47 based on specialty mismatch and abnormal billing signals.\n\n" +
+      "Findings:\n" +
+      "- Provider taxonomy (Family Medicine) does not match allowed taxonomies for CPT 81225 (genetic test).\n" +
+      "- Billing for 81225 exceeds the seeded CMS benchmark.\n\n" +
+      "Recommended next step: verify provider credentials and referral documentation for genetic testing services.",
+    source: "Local Rule"
+  },
+  externalMatches: [
+    { id: "match-sm-1", source: "NPPES", summary: "Verified NPI 1111222233 for Dr. Clean Provider — taxonomy 207Q00000X (Family Medicine)" }
+  ],
+  palantirInsight: {
+    provider: "Palantir AIP",
+    status: "not_configured",
+    recommendation: "Local fallback is active. Configure Palantir AIP env vars for live triage recommendations."
+  },
+  palantir: {
+    provider: "Palantir AIP",
+    mode: "not_configured",
+    stages: [
+      { stage: "extract_case_facts", configured: false, status: "not_configured", latencyMs: 0 },
+      { stage: "assess_risk", configured: false, status: "not_configured", latencyMs: 0 },
+      { stage: "generate_memo", configured: false, status: "not_configured", latencyMs: 0 }
+    ]
+  }
+};
+
 type AnalyzeApiResponse = {
   case: {
     title: string;
@@ -636,6 +750,16 @@ async function postJson<TResponse>(url: string, payload: unknown): Promise<TResp
   return (await response.json()) as TResponse;
 }
 
+async function getJson<TResponse>(url: string): Promise<TResponse> {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+
+  return (await response.json()) as TResponse;
+}
+
 function formatModeLabel(mode: IntakeMode): string {
   if (mode === "suspicious") {
     return "suspicious preset";
@@ -643,11 +767,16 @@ function formatModeLabel(mode: IntakeMode): string {
   if (mode === "clean") {
     return "clean preset";
   }
+  if (mode === "specialty_mismatch") {
+    return "specialty mismatch preset";
+  }
   return "custom intake";
 }
 
 function fallbackCaseFor(mode: IntakeMode): WorkspaceCaseData {
-  return mode === "clean" ? seededCleanCase : seededSuspiciousCase;
+  if (mode === "clean") return seededCleanCase;
+  if (mode === "specialty_mismatch") return seededSpecialtyMismatchCase;
+  return seededSuspiciousCase;
 }
 
 function mapApiCaseToWorkspace(payload: AnalyzeApiResponse): WorkspaceCaseData {
@@ -736,10 +865,79 @@ async function analyzeViaApi(request: IntakeRequest, forceLocal: boolean): Promi
   return mapApiCaseToWorkspace(analysis);
 }
 
+type CaseHistoryEntry = {
+  id: string;
+  title: string;
+  status: string;
+  overall_risk_score: number;
+  created_at: string;
+};
+
+type CaseDetailResponse = {
+  id: string;
+  title: string;
+  status: string;
+  overall_risk_score: number;
+  created_at: string;
+};
+
+type FindingsApiResponse = {
+  risk_flags: AnalyzeApiResponse["risk_flags"];
+  external_matches: AnalyzeApiResponse["external_matches"];
+};
+
+type TimelineApiResponse = {
+  timeline: AnalyzeApiResponse["timeline"];
+};
+
+type MemoApiResponse = AnalyzeApiResponse["memo"];
+
+const analysisStages = ["Extracting evidence", "Scoring risk", "Drafting memo"] as const;
+
+async function loadCaseFromHistory(caseId: string, apiBase: string): Promise<WorkspaceCaseData> {
+  const [caseRecord, findings, timeline, memo] = await Promise.all([
+    getJson<CaseDetailResponse>(`${apiBase}/cases/${caseId}`),
+    getJson<FindingsApiResponse>(`${apiBase}/cases/${caseId}/findings`),
+    getJson<TimelineApiResponse>(`${apiBase}/cases/${caseId}/timeline`),
+    getJson<MemoApiResponse>(`${apiBase}/cases/${caseId}/memo`)
+  ]);
+
+  return {
+    title: caseRecord.title,
+    status: caseRecord.status,
+    overallRiskScore: caseRecord.overall_risk_score,
+    documents: [],
+    findings: findings.risk_flags.map((flag) => ({
+      id: flag.id,
+      severity: flag.severity,
+      summary: flag.summary,
+      whyFlagged: flag.why_flagged,
+      externalValidation: flag.external_validation,
+      evidenceQuotes: flag.evidence_quotes,
+      source: flag.source ?? "Local Rule"
+    })),
+    evidenceGraph: { nodes: [], edges: [] },
+    timeline: timeline.timeline,
+    memo: {
+      title: memo.title,
+      body: memo.body_markdown,
+      source: memo.source ?? "Local Rule"
+    },
+    externalMatches: findings.external_matches.map((match) => ({
+      id: match.id,
+      source: match.source_name,
+      summary: match.summary
+    }))
+  };
+}
+
 export default function HomePage() {
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(false);
+  const [analysisStageIndex, setAnalysisStageIndex] = useState(0);
+  const [historyLoadingId, setHistoryLoadingId] = useState<string | null>(null);
   const [intakeMode, setIntakeMode] = useState<IntakeMode>("suspicious");
+  const [caseHistory, setCaseHistory] = useState<CaseHistoryEntry[]>([]);
   const [customRequest, setCustomRequest] = useState<IntakeRequest>(customPreset);
   const [caseData, setCaseData] = useState<WorkspaceCaseData | null>(null);
   const [statusNote, setStatusNote] = useState<string | null>(null);
@@ -749,9 +947,43 @@ export default function HomePage() {
   const [palantirMode, setPalantirMode] = useState("not checked");
   const [forceLocal, setForceLocal] = useState(false);
 
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+  const refreshCaseHistory = useCallback(async () => {
+    try {
+      const response = await fetch(`${apiBase}/cases`);
+      if (response.ok) {
+        setCaseHistory(await response.json());
+      }
+    } catch {
+      /* backend unavailable */
+    }
+  }, [apiBase]);
+
+  useEffect(() => {
+    void refreshCaseHistory();
+  }, [refreshCaseHistory]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setAnalysisStageIndex(0);
+      return;
+    }
+
+    setAnalysisStageIndex(0);
+    const interval = window.setInterval(() => {
+      setAnalysisStageIndex((current) => Math.min(current + 1, analysisStages.length - 1));
+    }, 1800);
+
+    return () => window.clearInterval(interval);
+  }, [isLoading]);
+
   const activeRequest = useMemo(() => {
     if (intakeMode === "clean") {
       return cleanPreset;
+    }
+    if (intakeMode === "specialty_mismatch") {
+      return specialtyMismatchPreset;
     }
     if (intakeMode === "custom") {
       return customRequest;
@@ -793,12 +1025,24 @@ export default function HomePage() {
         documents: [compiledEvidence.document]
       }));
       setUploadedSources(formattedFiles.map((file) => file.filename));
+      const allRecognized = formattedFiles.flatMap((file) => file.recognizedColumns);
+      const allIgnored = formattedFiles.flatMap((file) => file.ignoredColumns);
+      const columnInfo =
+        allRecognized.length > 0
+          ? ` Recognized columns: ${allRecognized.join(", ")}.${
+              allIgnored.length > 0 ? ` Ignored: ${allIgnored.join(", ")}.` : ""
+            }`
+          : allIgnored.length > 0
+            ? ` No recognized columns (ignored: ${allIgnored.join(
+                ", "
+              )}). Expected: npi, procedure_code, amount, patient_count, service_date, provider_name (or common aliases).`
+            : "";
       setFileStatus(
         compiledEvidence.rowCount > 0
           ? `Compiled ${files.length} file${files.length === 1 ? "" : "s"} into ${compiledEvidence.rowCount} claim row${
               compiledEvidence.rowCount === 1 ? "" : "s"
-            }.`
-          : "No claim rows were found, so an empty claim summary template was created."
+            }.${columnInfo}`
+          : `No claim rows were found, so an empty claim summary template was created.${columnInfo}`
       );
     } catch {
       setUploadedSources([]);
@@ -811,6 +1055,7 @@ export default function HomePage() {
   const handleAnalyze = async () => {
     setIsLoading(true);
     const sourceFilesForCase = intakeMode === "custom" ? uploadedSources : [];
+    setStatusNote(null);
     try {
       const apiCase = await analyzeViaApi(activeRequest, forceLocal);
       startTransition(() => {
@@ -819,6 +1064,7 @@ export default function HomePage() {
         setPalantirMode(apiCase.palantir?.mode ?? apiCase.palantirInsight?.status ?? "not returned");
         setStatusNote("Loaded from the local FastAPI backend.");
       });
+      void refreshCaseHistory();
     } catch {
       startTransition(() => {
         const fallbackCase = fallbackCaseFor(intakeMode);
@@ -829,6 +1075,24 @@ export default function HomePage() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleHistorySelect = async (entry: CaseHistoryEntry) => {
+    setHistoryLoadingId(entry.id);
+    setStatusNote(`Loading stored case ${entry.title}...`);
+    try {
+      const storedCase = await loadCaseFromHistory(entry.id, apiBase);
+      startTransition(() => {
+        setCaseData(storedCase);
+        setBackendMode("connected");
+        setPalantirMode("stored");
+        setStatusNote(`Loaded stored case ${storedCase.title}.`);
+      });
+    } catch {
+      setStatusNote(`Could not load stored case ${entry.title}.`);
+    } finally {
+      setHistoryLoadingId(null);
     }
   };
 
@@ -872,6 +1136,21 @@ export default function HomePage() {
             Use a preset for the live walkthrough or switch to custom intake to upload or paste evidence.
           </span>
         </div>
+        {isLoading ? (
+          <div aria-live="polite" className="analysis-progress" role="status">
+            <strong>{analysisStages[analysisStageIndex]}</strong>
+            <ol>
+              {analysisStages.map((stage, index) => (
+                <li
+                  className={index <= analysisStageIndex ? "active" : undefined}
+                  key={stage}
+                >
+                  {stage}
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : null}
         {statusNote ? <p className="hero-hint">{statusNote}</p> : null}
       </section>
 
@@ -892,6 +1171,14 @@ export default function HomePage() {
             type="button"
           >
             Clean Preset
+          </button>
+          <button
+            aria-pressed={intakeMode === "specialty_mismatch"}
+            className="mode-button"
+            onClick={() => handleModeChange("specialty_mismatch")}
+            type="button"
+          >
+            Specialty Mismatch
           </button>
           <button
             aria-pressed={intakeMode === "custom"}
@@ -988,6 +1275,35 @@ export default function HomePage() {
           </p>
         </section>
       )}
+
+      {caseHistory.length > 0 ? (
+        <section className="case-history" aria-label="Case History">
+          <h2>Case History</h2>
+          <ul className="finding-list">
+            {caseHistory.map((entry) => (
+              <li key={entry.id}>
+                <div className="finding-heading">
+                  <span className="chip chip-score">Risk {entry.overall_risk_score}</span>
+                  <span className="chip chip-status">{entry.status}</span>
+                </div>
+                <strong>{entry.title}</strong>
+                <div className="muted">{new Date(entry.created_at).toLocaleString()}</div>
+                <button
+                  aria-label={`View ${entry.title}`}
+                  className="mode-button history-view-button"
+                  disabled={historyLoadingId === entry.id}
+                  onClick={() => {
+                    void handleHistorySelect(entry);
+                  }}
+                  type="button"
+                >
+                  {historyLoadingId === entry.id ? "Loading" : "View"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </main>
   );
 }

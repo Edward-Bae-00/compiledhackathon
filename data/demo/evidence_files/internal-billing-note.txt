@@ -1,0 +1,16 @@
+Internal billing note
+
+Date: 2025-01-16
+Subject: January batch cleanup
+
+Apex Review Group managed billing for Dr. Excluded Provider during the January close process. BrightPath Billing LLC reviewed the chronic care management queue and asked staff to preserve all 99490 entries unless the patient had opted out in writing.
+
+Operational notes:
+
+- Dr. Excluded Provider remains the rendering provider on the claim summary.
+- Apex Review Group is handling edits before submission.
+- Northstar Referral Partners provided a referral list used for outreach prioritization.
+- The 99214 and 99490 batches should be separated from the routine control sample.
+
+Demo note: this is synthetic/anonymized evidence. It is designed to show relationship extraction and network triage, not to describe a real provider or company.
+

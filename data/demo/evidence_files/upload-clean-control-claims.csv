@@ -1,0 +1,4 @@
+npi,procedure_code,service_date,amount,patient_count,provider_name
+1111222233,93000,2025-01-03,180,12,Dr. Clean Provider
+2222333344,80307,2025-01-08,240,14,Dr. Pain Management Reviewer
+

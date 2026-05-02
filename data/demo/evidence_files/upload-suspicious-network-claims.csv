@@ -1,0 +1,5 @@
+npi,procedure_code,service_date,amount,patient_count,provider_name
+1234567890,99214,2025-01-07,7200,110,Dr. Excluded Provider
+1234567890,99490,2025-01-10,9800,120,Dr. Excluded Provider
+3333444455,80307,2025-01-14,8600,95,Atlas Toxicology Lab
+

@@ -1,0 +1,8 @@
+Synthetic case narrative for Custom Intake
+
+Whistleblower report received on 2025-01-18. Dr. Excluded Provider NPI 1234567890 billed 99214 for $7200 across 110 patients. Dr. Excluded Provider NPI 1234567890 billed 99490 for $9800 across 120 patients. Atlas Toxicology Lab NPI 3333444455 billed 80307 for $8600 across 95 patients.
+
+Apex Review Group managed billing for Dr. Excluded Provider during the January close process. BrightPath Billing LLC reviewed the chronic care management queue. Northstar Referral Partners supplied the referral list used for outreach prioritization.
+
+The former billing coordinator says staff were told to keep claims moving even when the chart only had a short outreach note. The source asked investigators to compare the claim volume against CMS benchmarks and check whether any named parties appear in exclusion data.
+

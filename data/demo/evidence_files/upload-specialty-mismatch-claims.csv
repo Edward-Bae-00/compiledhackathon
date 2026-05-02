@@ -1,0 +1,4 @@
+npi,procedure_code,service_date,amount,patient_count,provider_name
+1111222233,81225,2025-02-11,6800,44,Dr. Clean Provider
+8888999900,81225,2025-02-12,2900,18,Atlas Genetic Review Lab
+

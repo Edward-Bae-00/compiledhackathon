@@ -219,17 +219,32 @@ class PalantirAipClient:
     assess_risk_url: str | None = None
     generate_memo_url: str | None = None
     force_local: bool = False
-    timeout_seconds: float = 8
+    timeout_seconds: float = 30
+
+    @staticmethod
+    def _clean_url(val: str | None) -> str | None:
+        if not val:
+            return None
+        val = val.strip()
+        if not val.startswith(("http://", "https://")):
+            import warnings
+            warnings.warn(
+                f"Palantir URL env var does not start with http(s) — ignoring. "
+                f"Value starts with: {val[:60]!r}",
+                stacklevel=2,
+            )
+            return None
+        return val
 
     @classmethod
     def from_env(cls) -> "PalantirAipClient":
         return cls(
-            logic_url=os.getenv("PALANTIR_AIP_LOGIC_URL"),
+            logic_url=cls._clean_url(os.getenv("PALANTIR_AIP_LOGIC_URL")),
             api_token=os.getenv("PALANTIR_API_TOKEN"),
             hostname=os.getenv("PALANTIR_HOSTNAME"),
-            extract_facts_url=os.getenv("PALANTIR_AIP_EXTRACT_FACTS_URL"),
-            assess_risk_url=os.getenv("PALANTIR_AIP_ASSESS_RISK_URL"),
-            generate_memo_url=os.getenv("PALANTIR_AIP_GENERATE_MEMO_URL"),
+            extract_facts_url=cls._clean_url(os.getenv("PALANTIR_AIP_EXTRACT_FACTS_URL")),
+            assess_risk_url=cls._clean_url(os.getenv("PALANTIR_AIP_ASSESS_RISK_URL")),
+            generate_memo_url=cls._clean_url(os.getenv("PALANTIR_AIP_GENERATE_MEMO_URL")),
             force_local=os.getenv("PALANTIR_FORCE_LOCAL", "").lower() in {"1", "true", "yes"},
         )
 
@@ -399,8 +414,9 @@ class PalantirAipClient:
 
         request_body = json.dumps(
             {
-                **payload,
-                "case_file_json": json.dumps(payload),
+                "parameters": {
+                    "caseFileJson": json.dumps(payload),
+                },
             }
         ).encode()
         request = Request(
@@ -454,8 +470,9 @@ class PalantirAipClient:
 
         request_body = json.dumps(
             {
-                **payload,
-                "case_file_json": json.dumps(payload),
+                "parameters": {
+                    "caseFileJson": json.dumps(payload),
+                },
             }
         ).encode()
         request = Request(
@@ -679,6 +696,10 @@ class Storage:
         )
         self.connection.commit()
         return case
+
+    def list_cases(self) -> list[CaseRecord]:
+        rows = self.connection.execute("SELECT * FROM cases ORDER BY created_at DESC").fetchall()
+        return [CaseRecord.model_validate(dict(row)) for row in rows]
 
     def get_case(self, case_id: str) -> CaseRecord:
         row = self.connection.execute("SELECT * FROM cases WHERE id = ?", (case_id,)).fetchone()
@@ -1520,6 +1541,10 @@ def create_app() -> FastAPI:
     @app.get("/integrations/palantir/status", response_model=PalantirStatusResponse)
     def palantir_status_endpoint() -> PalantirStatusResponse:
         return palantir.status()
+
+    @app.get("/cases", response_model=list[CaseRecord])
+    def list_cases_endpoint() -> list[CaseRecord]:
+        return storage.list_cases()
 
     @app.post("/cases", response_model=CaseRecord, status_code=201)
     def create_case_endpoint(payload: CreateCaseRequest) -> CaseRecord:
